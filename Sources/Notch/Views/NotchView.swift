@@ -97,16 +97,17 @@ struct NotchView: View {
     /// contextual actions on the right.
     private var header: some View {
         HStack(spacing: 0) {
-            HStack(spacing: 4) {
+            HStack(spacing: 2) {
                 TabButton(symbol: "music.note", active: state.tab == .music, label: "Now Playing") { state.tab = .music }
                 TabButton(symbol: "tray.fill", active: state.tab == .shelf, badge: shelf.items.count, label: "Shelf, \(shelf.items.count) files") { state.tab = .shelf }
                 TabButton(symbol: "timer", active: state.tab == .clock, dot: clock.isActive, label: "Stopwatch and timer") { state.tab = .clock }
                 TabButton(symbol: "cable.connector.horizontal", active: state.tab == .devices, label: "Connected devices") { state.tab = .devices }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.leading, 14)
+            .padding(.leading, 10)
 
-            Spacer().frame(width: notchSize.width)
+            // Keep a little air between the strips and the notch itself.
+            Spacer().frame(width: notchSize.width + 12)
 
             HStack(spacing: 4) {
                 if state.tab == .shelf && !shelf.items.isEmpty {
@@ -124,7 +125,7 @@ struct NotchView: View {
                 }
             }
             .frame(maxWidth: .infinity, alignment: .trailing)
-            .padding(.trailing, 14)
+            .padding(.trailing, 10)
         }
     }
 

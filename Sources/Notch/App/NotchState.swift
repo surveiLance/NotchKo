@@ -158,7 +158,7 @@ enum Motion {
     static let openDelay: TimeInterval  = 0.12
     static let closeDelay: TimeInterval = 0.18
 
-    static let expandedSize = CGSize(width: 450, height: 160)
+    static let expandedSize = CGSize(width: 500, height: 160)
     static let wingWidth: CGFloat = 36
     static let wingWidthClock: CGFloat = 60
     /// Transparent slack either side of the collapsed pill that still catches drags/hover.
