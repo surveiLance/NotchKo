@@ -1,4 +1,4 @@
-# Notch
+# NotchKo
 
 A Dynamic Island for the MacBook notch that costs **0% CPU** while idle.
 
@@ -32,19 +32,65 @@ external monitors, same shelf/music/clock underneath.
 
 ## Install
 
-Requires macOS 14+ and the Xcode Command Line Tools (`xcode-select --install`).
-No Xcode needed.
+**Requirements:** macOS 14 Sonoma or newer. A notch is *not* required — on a
+Mac without one (or on an external monitor) it draws a small virtual pill at
+the top of the screen.
+
+Pick whichever fits you:
+
+### Option A — build it yourself (recommended, no security warnings)
+
+You only need Apple's free Command Line Tools, not Xcode. In Terminal:
 
 ```bash
-git clone <this repo> notch && cd notch
-./scripts/install.sh
+xcode-select --install
 ```
 
-That builds an optimised `Notch.app`, copies it to `/Applications`, launches it,
-and registers it as a login item (toggle in the menu bar icon). No Dock icon.
+Wait for that to finish (it's ~1 GB), then:
 
-First time you press play/pause macOS will ask to let Notch control Spotify —
-allow it.
+```bash
+git clone https://github.com/surveiLance/NotchKo.git && cd NotchKo && ./scripts/install.sh
+```
+
+About two minutes. This builds the app, puts `Notch.app` in `/Applications`,
+launches it, and registers it to start at login. Because it was built on your
+own Mac, macOS opens it without any warning.
+
+### Option B — download the app
+
+If someone sent you `Notch.app` (or you grabbed a zip from the Releases page):
+
+1. Drag `Notch.app` into your **Applications** folder.
+2. **Right-click → Open** the first time. macOS will say it "cannot check it for
+   malicious software" — click **Open**. (It's not notarized by Apple; that
+   costs $99/yr. You only have to do this once.)
+   If the Open button isn't offered, go to **System Settings → Privacy &
+   Security**, scroll down, and click **Open Anyway**.
+
+It starts at login from then on.
+
+### First run
+
+- There's **no Dock icon and no window** — that's by design. Look for a small
+  laptop icon in the menu bar (Launch at Login toggle, Quit) and hover the
+  notch, or press **⌃⌥N**.
+- The first time you press play/pause, macOS asks *"Notch wants to control
+  Spotify"* → **Allow**. That's the only permission it needs.
+- To remove it: Quit from the menu bar icon, delete `/Applications/Notch.app`.
+  Parked shelf files (screenshots you dropped) live in
+  `~/Library/Application Support/Notch/Shelf`.
+
+## Using it
+
+| Do this | Get this |
+|---|---|
+| Hover the notch, or ⌃⌥N | Panel opens with Music / Shelf / Clock tabs |
+| Play something in Spotify | Album art + equalizer in the album's colour appear beside the notch |
+| Drag a file, screenshot thumbnail, or image onto the notch | It's parked on the Shelf; drag it back out anywhere |
+| Drop onto the blue AirDrop box | AirDrop picker opens straight away |
+| Click a shelf file → eye icon | Quick Look preview |
+| Click the timer digits | Type a length: `25`, `12:30`, `1h20m`, `90s` |
+| Plug in / unplug, connect AirPods | A short pop in the pill |
 
 ## Develop
 
