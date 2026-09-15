@@ -1,123 +1,176 @@
 # NotchKo
 
-A Dynamic Island for the MacBook notch that costs **0% CPU** while idle.
+**Turn your MacBook's notch into a Dynamic Island — without draining your battery.**
 
-Most notch apps poll media state on a timer and animate on the main thread all
-day, which is why they warm your lap. This one is event-driven end to end:
-nothing ticks unless the notch is open, and the only thing that animates while
-it's closed (the equalizer) runs in Core Animation, out of process.
+<p align="center">
+  <img src="docs/home.png" width="530" alt="NotchKo open on the Home tab: now playing, timer, battery and devices, shelf">
+</p>
 
-## What it does
+Hover the notch (or press <kbd>⌃</kbd><kbd>⌥</kbd><kbd>N</kbd>) and it opens. Move away and it tucks back in.
+While it's closed it uses **0% CPU** — it only wakes up when something actually happens.
 
-**Collapsed pill** (hover or `⌃⌥N` to open)
-- Album art + equalizer in the album's colour while Spotify plays; hidden when paused
-- Live timer / stopwatch digits when one is running
-- Pops for charger plug/unplug, low battery (20 / 10 / 5%), Bluetooth connect/disconnect
-- A "Good morning" island at login: time-of-day glyph, clock, battery count-up
+<p align="center">
+  <img src="docs/pill.png" width="350" alt="Collapsed pill with album art and an equalizer beside the notch">
+</p>
 
-**Now Playing** — artwork (click → opens Spotify), title/artist, scrubbable
-progress bar, prev / play-pause / next, shuffle, repeat. Uses Spotify's
-public scripting API and its playback-change broadcast — no private
-frameworks, no polling.
+---
 
-**Shelf** — drag files onto the notch to park them. Accepts real files, macOS
-screenshot thumbnails, and images dragged from apps. QuickLook thumbnails,
-multi-select, drag out as a bundle, Quick Look preview, AirDrop zone.
+## Install (about 3 minutes)
 
-**Clock** — stopwatch, and a timer you can type into (`25`, `12:30`, `1h20m`,
-`90s`). Rings and opens the notch when done.
+You'll need a Mac running **macOS 14 Sonoma or newer**. A notch is *not* required —
+on a Mac without one, or on an external monitor, it draws a small black pill at the top instead.
 
-**Works on every display** — real notch on the MacBook, a virtual pill on
-external monitors, same shelf/music/clock underneath.
+### Step 1 — open Terminal
 
-## Install
+Press <kbd>⌘</kbd> + <kbd>Space</kbd>, type **Terminal**, press <kbd>Return</kbd>.
+A window with a blinking cursor appears. You'll paste two commands into it.
 
-**Requirements:** macOS 14 Sonoma or newer. A notch is *not* required — on a
-Mac without one (or on an external monitor) it draws a small virtual pill at
-the top of the screen.
+### Step 2 — install Apple's build tools (one-time, free)
 
-Pick whichever fits you:
-
-### Option A — build it yourself (recommended, no security warnings)
-
-You only need Apple's free Command Line Tools, not Xcode. In Terminal:
+Paste this and press <kbd>Return</kbd>:
 
 ```bash
 xcode-select --install
 ```
 
-Wait for that to finish (it's ~1 GB), then:
+A dialog pops up — click **Install** and wait for it to finish (it's about 1 GB).
+If it says *"command line tools are already installed"*, that's fine, move on.
+
+### Step 3 — install NotchKo
+
+Paste this and press <kbd>Return</kbd>:
 
 ```bash
 git clone https://github.com/surveiLance/NotchKo.git && cd NotchKo && ./scripts/install.sh
 ```
 
-About two minutes. This builds the app, puts `Notch.app` in `/Applications`,
-launches it, and registers it to start at login. Because it was built on your
-own Mac, macOS opens it without any warning.
+Wait for it to print `installed /Applications/Notch.app`. That's it — the notch
+greets you and it's running.
 
-### Option B — download the app
+<p align="center">
+  <img src="docs/greeting.png" width="590" alt="Login greeting: Good afternoon, Lance, with the time and battery">
+</p>
 
-If someone sent you `Notch.app` (or you grabbed a zip from the Releases page):
+### What just happened?
 
-1. Drag `Notch.app` into your **Applications** folder.
-2. **Right-click → Open** the first time. macOS will say it "cannot check it for
-   malicious software" — click **Open**. (It's not notarized by Apple; that
-   costs $99/yr. You only have to do this once.)
-   If the Open button isn't offered, go to **System Settings → Privacy &
-   Security**, scroll down, and click **Open Anyway**.
+- `Notch.app` was built on your Mac and placed in your **Applications** folder.
+- It was added to your **Login Items**, so it starts automatically after a restart.
+- There is **no Dock icon and no window** — that's on purpose. Look for a small
+  **laptop icon in your menu bar** (top-right). That's where Quit and the
+  Launch-at-Login switch live.
 
-It starts at login from then on.
+### One permission
 
-### First run
+The first time you press play/pause in the notch, macOS asks:
+*"Notch" wants access to control "Spotify"* → click **Allow**. That's the only
+permission it needs.
 
-- There's **no Dock icon and no window** — that's by design. Look for a small
-  laptop icon in the menu bar (Launch at Login toggle, Quit) and hover the
-  notch, or press **⌃⌥N**.
-- The first time you press play/pause, macOS asks *"Notch wants to control
-  Spotify"* → **Allow**. That's the only permission it needs.
-- To remove it: Quit from the menu bar icon, delete `/Applications/Notch.app`.
-  Parked shelf files (screenshots you dropped) live in
-  `~/Library/Application Support/Notch/Shelf`.
+---
 
-## Using it
+## What it does
 
-| Do this | Get this |
-|---|---|
-| Hover the notch, or ⌃⌥N | Panel opens with Music / Shelf / Clock tabs |
-| Play something in Spotify | Album art + equalizer in the album's colour appear beside the notch |
-| Drag a file, screenshot thumbnail, or image onto the notch | It's parked on the Shelf; drag it back out anywhere |
-| Drop onto the blue AirDrop box | AirDrop picker opens straight away |
-| Click a shelf file → eye icon | Quick Look preview |
-| Click the timer digits | Type a length: `25`, `12:30`, `1h20m`, `90s` |
-| Plug in / unplug, connect AirPods | A short pop in the pill |
+### 🎵 Music
 
-## Develop
+<p align="center"><img src="docs/music.png" width="530" alt="Now Playing tab"></p>
+
+Shows whatever Spotify is playing. Click the bar to jump around in the song,
+shuffle / repeat, click the album art to open Spotify. While closed, the pill
+shows the album art and an equalizer in the album's colour — hidden when paused.
+
+### 🗂 Shelf
+
+<p align="center"><img src="docs/shelf.png" width="530" alt="Shelf tab with files and the AirDrop zone"></p>
+
+Drag any file **onto the notch** to park it there. Works with the little
+screenshot thumbnail too (the one that appears after <kbd>⇧</kbd><kbd>⌘</kbd><kbd>4</kbd>),
+and with images dragged out of a browser or Mail.
+
+- Drag files back out into any app or Finder window
+- Click files to select several, then drag them out together
+- Drop onto the blue box (or click it) → AirDrop
+- Select one file → the **eye** button shows a Quick Look preview
+- Trash removes selected files from the shelf (or all, if nothing's selected) — nothing is deleted from your disk
+
+### ⏱ Clock
+
+<p align="center"><img src="docs/clock.png" width="530" alt="Stopwatch and timer"></p>
+
+A stopwatch and a timer. Set the timer however you like: **drag the digits**
+left/right, **click them and type** (`25`, `12:30`, `90s`, `1h20m`), or tap
+`+10s` `+30s` `+1m` `+5m` (hold <kbd>⌥</kbd> to subtract). While it's running the
+countdown shows beside the notch even when it's closed, and it rings and pops
+open when done.
+
+### 🔌 Devices
+
+Everything connected: AirPods with left / right / case battery, keyboards,
+mice, controllers, your charger and its wattage, the Mac's own battery with
+time remaining, and external displays.
+
+### ✨ Little pops
+
+The pill briefly shows: charger plugged in / unplugged, low battery at 20 / 10 / 5 %,
+AirPods or other Bluetooth devices connecting.
+
+### 🖥 Works on every screen
+
+Real notch on the MacBook, a virtual pill on external monitors — same shelf,
+music and clock on all of them.
+
+---
+
+## Questions
+
+**How do I quit or turn off launch-at-login?**
+Click the laptop icon in the menu bar.
+
+**How do I uninstall?**
+Quit it from the menu bar icon, then drag `/Applications/Notch.app` to the Trash.
+Screenshots you dropped on the shelf are kept in
+`~/Library/Application Support/Notch/Shelf` — delete that folder too if you like.
+
+**"cannot be opened because Apple cannot check it for malicious software"?**
+You'll only see that if someone *sent* you the app instead of building it with
+the steps above. Right-click `Notch.app` → **Open** → **Open** once, and it's fine.
+(It's not notarized by Apple; that costs $99/yr.)
+
+**Does it work without Spotify?**
+Yes — the shelf, clock, devices and pops don't need it. Apple Music support isn't
+there yet.
+
+**Does it really use no battery?**
+While closed: 0% CPU. It never polls — Spotify, the charger, Bluetooth and the
+timer all *tell* it when something changes. The only thing animating while it's
+closed is the equalizer, and that's handled by macOS's render server, not the app.
+Check for yourself: Activity Monitor → Energy tab → "Notch".
+
+---
+
+## For developers
 
 ```bash
-./scripts/run.sh          # debug build + relaunch
-./scripts/debug.sh expand # drive the UI from a script (debug builds only)
+./scripts/run.sh            # debug build + relaunch
+./scripts/install.sh        # optimized build → /Applications
+./scripts/debug.sh expand   # drive the UI from a script (debug builds only)
 ```
 
-Feel tunables (springs, delays, sizes) live in `Motion` in
-`Sources/Notch/App/NotchState.swift`.
-
-### Signing
-
-Builds are ad-hoc signed by default. If you create a self-signed *Code Signing*
-certificate named `Notch Dev` in Keychain Access, the build script uses it, so
-macOS permissions survive rebuilds.
-
-## Layout
+Swift 5.9+, SwiftUI inside an AppKit `NSPanel`, no Xcode project — it's a Swift
+Package with a tiny bundling script. No private frameworks.
 
 ```
 Sources/Notch
 ├── App/        entry point, per-panel state, login item, hotkey
 ├── Panel/      NSPanel over the notch, geometry, hover + drag-and-drop
-├── Views/      SwiftUI: notch shape, Now Playing, shelf, clock, greeting, pops
-└── Features/   Spotify, shelf store, clock, power / Bluetooth monitors
+├── Views/      SwiftUI: notch shape, overview, music, shelf, clock, devices, greeting, pops
+└── Features/   Spotify, shelf store, clock, devices, power / Bluetooth monitors
 ```
+
+Feel tunables (springs, delays, sizes) are in `Motion` in `Sources/Notch/App/NotchState.swift`.
+
+**Signing:** builds are ad-hoc signed by default. Create a self-signed *Code Signing*
+certificate named `Notch Dev` in Keychain Access and the build script will use it,
+so macOS permissions survive rebuilds.
 
 ## License
 
-MIT
+MIT — do what you like with it.
