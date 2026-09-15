@@ -14,7 +14,7 @@ final class NotchState: ObservableObject {
     @Published var keyboardWanted = false
     /// Set by the panel: show a Quick Look preview of these files.
     var previewHandler: (([URL]) -> Void)?
-    @Published var tab: Tab = .music
+    @Published var tab: Tab = .home
     /// Which zone a file drag is hovering over, if any.
     @Published private(set) var dropZone: DropZone?
     var isDragTargeted: Bool { dropZone != nil }
@@ -26,7 +26,7 @@ final class NotchState: ObservableObject {
     let clock: ClockStore
     let devices: DevicesStore
 
-    enum Tab { case music, shelf, clock, devices }
+    enum Tab { case home, music, shelf, clock, devices }
     private var lastDrop = Date.distantPast
     private var cancellables = Set<AnyCancellable>()
 
@@ -159,6 +159,8 @@ enum Motion {
     static let closeDelay: TimeInterval = 0.18
 
     static let expandedSize = CGSize(width: 500, height: 160)
+    /// Space between the notch and the nearest tab on each side.
+    static let tabNotchGap: CGFloat = 10
     static let wingWidth: CGFloat = 36
     static let wingWidthClock: CGFloat = 60
     /// Transparent slack either side of the collapsed pill that still catches drags/hover.

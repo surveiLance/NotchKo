@@ -39,9 +39,16 @@ final class DevicesStore: ObservableObject {
     @Published private(set) var devices: [Device] = []
     @Published private(set) var loading = false
     private var task: Task<Void, Never>?
+    private var lastRefresh = Date.distantPast
+
+    /// For the overview: reuse a recent snapshot instead of shelling out again.
+    func refreshIfStale(_ maxAge: TimeInterval = 60) {
+        if devices.isEmpty || Date().timeIntervalSince(lastRefresh) > maxAge { refresh() }
+    }
 
     func refresh() {
         task?.cancel()
+        lastRefresh = Date()
         loading = devices.isEmpty
         task = Task { [weak self] in
             let bluetooth = await Self.bluetoothDevices()

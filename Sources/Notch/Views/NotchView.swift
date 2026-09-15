@@ -98,17 +98,21 @@ struct NotchView: View {
     /// between the notch and the right-hand tabs when the shelf is showing.
     private var header: some View {
         HStack(spacing: 0) {
+            // Left strip: tabs hug the notch.
             HStack(spacing: 2) {
+                TabButton(symbol: "square.grid.2x2.fill", active: state.tab == .home, label: "Overview") { state.tab = .home }
                 TabButton(symbol: "music.note", active: state.tab == .music, label: "Now Playing") { state.tab = .music }
                 TabButton(symbol: "tray.fill", active: state.tab == .shelf, badge: shelf.items.count, label: "Shelf, \(shelf.items.count) files") { state.tab = .shelf }
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.leading, 10)
+            .frame(maxWidth: .infinity, alignment: .trailing)
 
-            // Keep a little air between the strips and the notch itself.
-            Spacer().frame(width: notchSize.width + 12)
+            Spacer().frame(width: notchSize.width + 2 * Motion.tabNotchGap)
 
+            // Right strip: tabs hug the notch, shelf actions sit at the outer end.
             HStack(spacing: 2) {
+                TabButton(symbol: "timer", active: state.tab == .clock, dot: clock.isActive, label: "Stopwatch and timer") { state.tab = .clock }
+                TabButton(symbol: "cable.connector.horizontal", active: state.tab == .devices, label: "Connected devices") { state.tab = .devices }
+                Spacer(minLength: 0)
                 if state.tab == .shelf && !shelf.items.isEmpty {
                     if shelf.selection.count == 1, let item = shelf.selectedItems.first {
                         TabButton(symbol: "eye", active: false, label: "Preview \(item.name)") { state.preview([item.url]) }
@@ -121,20 +125,18 @@ struct NotchView: View {
                         shelf.removeSelectedOrAll()
                     }
                     .help(shelf.selection.isEmpty ? "Remove all files from the shelf" : "Remove selected files from the shelf")
-                    Rectangle().fill(.white.opacity(0.15)).frame(width: 1, height: 14).padding(.horizontal, 4)
+                    .padding(.trailing, 10)
                 }
-                Spacer(minLength: 0)
-                TabButton(symbol: "timer", active: state.tab == .clock, dot: clock.isActive, label: "Stopwatch and timer") { state.tab = .clock }
-                TabButton(symbol: "cable.connector.horizontal", active: state.tab == .devices, label: "Connected devices") { state.tab = .devices }
             }
-            .frame(maxWidth: .infinity, alignment: .trailing)
-            .padding(.trailing, 10)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 
     @ViewBuilder
     private var content: some View {
         switch state.tab {
+        case .home:
+            OverviewView(state: state)
         case .shelf:
             ShelfView(shelf: shelf, state: state)
         case .clock:

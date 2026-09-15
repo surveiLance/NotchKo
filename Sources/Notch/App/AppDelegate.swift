@@ -155,6 +155,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     case "expand":   if !state.isExpanded { state.toggle() }
                     case "collapse": state.collapseNow()
                     case "toggle":   state.toggle()
+                    case "home":     state.tab = .home
                     case "music":    state.tab = .music
                     case "shelf":    state.tab = .shelf
                     case "clock":    state.tab = .clock
