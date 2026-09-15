@@ -175,7 +175,8 @@ enum Motion {
     // Charger / bluetooth pops: quick and crisp.
     static let noticeIn  = Animation.spring(response: 0.32, dampingFraction: 0.72)
     static let noticeOut = Animation.spring(response: 0.35, dampingFraction: 0.9)
-    static let wings = Animation.spring(response: 0.4, dampingFraction: 0.75)
+    static let wings    = Animation.spring(response: 0.4, dampingFraction: 0.75)   // appearing
+    static let wingsOut = Animation.spring(response: 0.42, dampingFraction: 0.95)  // gliding back in
 }
 
 

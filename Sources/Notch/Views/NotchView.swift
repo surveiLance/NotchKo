@@ -80,7 +80,12 @@ struct NotchView: View {
             } else if hasWings {
                 CollapsedWingsView(spotify: spotify, clock: clock, notchWidth: notchSize.width, wing: state.wingWidth)
                     .frame(width: size.width, height: size.height)
-                    .transition(.opacity)
+                    // Fade in behind the spring; on pause, fade + shrink toward
+                    // the notch quickly so the pill closes on empty black.
+                    .transition(.asymmetric(
+                        insertion: .opacity.animation(.easeOut(duration: 0.25).delay(0.1)),
+                        removal: .opacity.combined(with: .scale(scale: 0.6)).animation(.easeIn(duration: 0.16))
+                    ))
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
@@ -90,7 +95,7 @@ struct NotchView: View {
             NotchShape(topRadius: topRadius, bottomRadius: bottomRadius)
                 .frame(width: size.width, height: size.height)
         }
-        .animation(Motion.wings, value: hasWings)
+        .animation(hasWings ? Motion.wings : Motion.wingsOut, value: hasWings)
     }
 
     /// The strips either side of the physical notch. Music + Shelf on the

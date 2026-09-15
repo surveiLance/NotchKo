@@ -71,12 +71,15 @@ final class NotchPanel: NSPanel {
 
         // Wings appear/disappear with playback; resize the collapsed window to fit.
         // (@Published fires on willSet, so use the incoming value, not state.wingWidth.)
+        // Growing: resize the window first so the spring has room. Shrinking
+        // (pause, timer done): let the pill glide back in, then shrink.
         state.$wingWidth
             .removeDuplicates()
             .sink { [weak self] wing in
                 guard let self else { return }
+                let shrinking = wing < self.wingWidth
                 self.wingWidth = wing
-                if !self.state.isExpanded { self.resize(expanded: false, animatedDelay: false) }
+                if !self.state.isExpanded { self.resize(expanded: false, animatedDelay: shrinking) }
             }
             .store(in: &cancellables)
 
