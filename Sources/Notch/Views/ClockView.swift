@@ -36,10 +36,11 @@ struct ClockView: View {
     // MARK: Timer
 
     private var timerCard: some View {
-        Card(title: clock.timerFired ? "Time's up" : (editing ? "Type a time, then ⏎" : "Timer"), symbol: "timer",
+        Card(title: clock.timerFired ? "Time's up" : (editing ? "Type a time, then ⏎" : (clock.timerRunning ? "Timer" : "Timer · click digits to type")),
+             symbol: "timer",
              tint: clock.timerFired ? .red : (editing ? .orange : nil)) {
             if editing {
-                TextField("12:30 · 90s · 1h20m", text: $draft)
+                TextField("25 · 12:30 · 90s · 1h20m", text: $draft)
                     .textFieldStyle(.plain)
                     .font(.system(size: 26, weight: .medium, design: .rounded).monospacedDigit())
                     .foregroundStyle(invalid ? .red : .white)
@@ -68,17 +69,20 @@ struct ClockView: View {
                             label: clock.timerFired ? "Dismiss timer" : "Pause timer") { clock.timerToggle() }
             } else {
                 RoundButton(symbol: "play.fill", tint: .green, label: "Start timer") { clock.timerToggle() }
+                    .disabled(clock.timerRemaining <= 0)
+                    .opacity(clock.timerRemaining > 0 ? 1 : 0.35)
             }
             RoundButton(symbol: "arrow.counterclockwise", tint: .gray, label: "Reset timer") { clock.timerReset() }
                 .disabled(!clock.timerHasValue)
                 .opacity(clock.timerHasValue ? 1 : 0.35)
             if !clock.timerRunning && !clock.timerFired {
-                Spacer(minLength: 4)
+                Spacer(minLength: 2)
+                // Additive chips in seconds and minutes; ⌥-click subtracts.
                 HStack(spacing: 3) {
-                    Chip("-1") { clock.timerAdjust(by: -60) }
-                    Chip("+1") { clock.timerAdjust(by: 60) }
-                    Chip("+5") { clock.timerAdjust(by: 300) }
-                    Chip("25") { clock.timerSet(25 * 60) }
+                    Chip("+10s", 10) { clock.timerAdd($0) }
+                    Chip("+30s", 30) { clock.timerAdd($0) }
+                    Chip("+1m", 60) { clock.timerAdd($0) }
+                    Chip("+5m", 300) { clock.timerAdd($0) }
                 }
             }
         }
@@ -173,20 +177,31 @@ private struct RoundButton: View {
 
 private struct Chip: View {
     let text: String
-    let action: () -> Void
+    let amount: TimeInterval
+    let action: (TimeInterval) -> Void
     @State private var hovering = false
-    init(_ text: String, action: @escaping () -> Void) { self.text = text; self.action = action }
+    init(_ text: String, _ amount: TimeInterval, action: @escaping (TimeInterval) -> Void) {
+        self.text = text; self.amount = amount; self.action = action
+    }
+
+    private var subtracting: Bool { hovering && NSEvent.modifierFlags.contains(.option) }
 
     var body: some View {
-        Button(action: action) {
-            Text(text)
-                .font(.system(size: 10, weight: .semibold).monospacedDigit())
+        Button {
+            let minus = NSEvent.modifierFlags.contains(.option)
+            action(minus ? -amount : amount)
+        } label: {
+            Text(subtracting ? text.replacingOccurrences(of: "+", with: "−") : text)
+                .font(.system(size: 9.5, weight: .semibold).monospacedDigit())
                 .foregroundStyle(.white.opacity(0.85))
-                .frame(width: 24, height: 20)
+                .frame(minWidth: 30, minHeight: 20)
+                .padding(.horizontal, 2)
                 .background(RoundedRectangle(cornerRadius: 6, style: .continuous).fill(.white.opacity(hovering ? 0.2 : 0.1)))
         }
         .buttonStyle(.plain)
         .onHover { hovering = $0 }
-        .accessibilityLabel(text == "25" ? "Set timer to 25 minutes" : "\(text) minute")
+        .help("Add \(text.dropFirst()) · ⌥-click to subtract")
+        .accessibilityLabel("Add \(text.dropFirst()) to timer")
+        .accessibilityHint("Option-click subtracts")
     }
 }

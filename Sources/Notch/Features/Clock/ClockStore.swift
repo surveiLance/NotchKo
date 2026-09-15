@@ -76,15 +76,26 @@ final class ClockStore: ObservableObject {
     }
 
     /// Change the configured length (only meaningful while not running).
+    /// Seconds-granular: 0 up to 24h.
     func timerSet(_ seconds: TimeInterval) {
         guard !timerRunning else { return }
-        timerDuration = max(60, min(seconds, 24 * 3600))
+        timerDuration = max(0, min(seconds.rounded(), 24 * 3600))
         timerPausedRemaining = nil
         timerFired = false
         updateActive()
     }
 
-    func timerAdjust(by delta: TimeInterval) { timerSet(timerDuration + delta) }
+    /// Bump the *remaining* time while paused, or the configured length otherwise.
+    func timerAdd(_ seconds: TimeInterval) {
+        guard !timerRunning else { return }
+        if let paused = timerPausedRemaining {
+            timerPausedRemaining = max(0, min(paused + seconds, 24 * 3600))
+        } else {
+            timerSet(timerDuration + seconds)
+        }
+        timerFired = false
+        updateActive()
+    }
 
     private func scheduleFire(in seconds: TimeInterval) {
         fireWork?.cancel()
