@@ -7,4 +7,5 @@ final class Services {
     let spotify = SpotifyClient()
     let shelf = ShelfStore()
     let clock = ClockStore()
+    let devices = DevicesStore()
 }

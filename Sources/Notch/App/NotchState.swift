@@ -24,8 +24,9 @@ final class NotchState: ObservableObject {
     let spotify: SpotifyClient
     let shelf: ShelfStore
     let clock: ClockStore
+    let devices: DevicesStore
 
-    enum Tab { case music, shelf, clock }
+    enum Tab { case music, shelf, clock, devices }
     private var lastDrop = Date.distantPast
     private var cancellables = Set<AnyCancellable>()
 
@@ -33,6 +34,7 @@ final class NotchState: ObservableObject {
         spotify = services.spotify
         shelf = services.shelf
         clock = services.clock
+        devices = services.devices
 
         // Wings: *playing* music gets a narrow wing for artwork/equaliser (a
         // paused track hides, you don't need to see it); a running timer or

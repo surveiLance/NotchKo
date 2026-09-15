@@ -96,6 +96,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         power = PowerMonitor()
         power.onCharging = { [weak self] charging, pct in
             self?.states.forEach { $0.show(.power(charging: charging, percent: pct)) }
+            self?.services.devices.refresh()
         }
         power.onLowBattery = { [weak self] pct in
             self?.states.forEach { $0.show(.lowBattery(percent: pct)) }
@@ -105,6 +106,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         bluetooth = BluetoothMonitor()
         bluetooth.onChange = { [weak self] name, connected, isAudio in
             self?.states.forEach { $0.show(.bluetooth(name: name, connected: connected, isAudio: isAudio)) }
+            // system_profiler lags the connect event slightly.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { self?.services.devices.refresh() }
         }
     }
 
@@ -155,6 +158,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     case "music":    state.tab = .music
                     case "shelf":    state.tab = .shelf
                     case "clock":    state.tab = .clock
+                    case "devices":  state.tab = .devices
                     case "drag":     state.setDragTargeted(.shelf)
                     case "undrag":   state.setDragTargeted(nil)
                     case "greet":    state.playGreeting()

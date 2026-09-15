@@ -101,6 +101,7 @@ struct NotchView: View {
                 TabButton(symbol: "music.note", active: state.tab == .music, label: "Now Playing") { state.tab = .music }
                 TabButton(symbol: "tray.fill", active: state.tab == .shelf, badge: shelf.items.count, label: "Shelf, \(shelf.items.count) files") { state.tab = .shelf }
                 TabButton(symbol: "timer", active: state.tab == .clock, dot: clock.isActive, label: "Stopwatch and timer") { state.tab = .clock }
+                TabButton(symbol: "cable.connector.horizontal", active: state.tab == .devices, label: "Connected devices") { state.tab = .devices }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.leading, 14)
@@ -134,6 +135,8 @@ struct NotchView: View {
             ShelfView(shelf: shelf, state: state)
         case .clock:
             ClockView(clock: clock, state: state)
+        case .devices:
+            DevicesView(devices: state.devices)
         case .music:
             if spotify.track != nil {
                 NowPlayingView(spotify: spotify) { state.collapseNow() }
