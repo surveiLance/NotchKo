@@ -1,0 +1,220 @@
+import SwiftUI
+import Combine
+
+/// Single source of truth for the notch UI. Everything is event-driven:
+/// nothing here polls or runs a timer while idle.
+@MainActor
+final class NotchState: ObservableObject {
+    @Published private(set) var isExpanded = false
+    /// Transient pill content (greeting, volume, charger…). Nil = normal pill.
+    @Published private(set) var notice: Notice?
+    var isGreeting: Bool { notice == .greeting }
+    private var noticeHide: DispatchWorkItem?
+    /// A text field in the notch wants keyboard focus; the panel becomes key only then.
+    @Published var keyboardWanted = false
+    /// Set by the panel: show a Quick Look preview of these files.
+    var previewHandler: (([URL]) -> Void)?
+    @Published var tab: Tab = .music
+    /// Which zone a file drag is hovering over, if any.
+    @Published private(set) var dropZone: DropZone?
+    var isDragTargeted: Bool { dropZone != nil }
+    /// AirDrop zone frame (SwiftUI global coords) reported by ShelfView.
+    var airDropFrame: CGRect?
+    enum DropZone { case shelf, airDrop }
+    let spotify: SpotifyClient
+    let shelf: ShelfStore
+    let clock: ClockStore
+
+    enum Tab { case music, shelf, clock }
+    private var lastDrop = Date.distantPast
+    private var cancellables = Set<AnyCancellable>()
+
+    init(services: Services) {
+        spotify = services.spotify
+        shelf = services.shelf
+        clock = services.clock
+
+        // Wings: *playing* music gets a narrow wing for artwork/equaliser (a
+        // paused track hides, you don't need to see it); a running timer or
+        // stopwatch needs room for digits.
+        Publishers.CombineLatest(spotify.$isPlaying, clock.$isActive)
+            .map { music, clock -> CGFloat in
+                if clock { return Motion.wingWidthClock }
+                if music { return Motion.wingWidth }
+                return 0
+            }
+            .removeDuplicates()
+            .sink { [weak self] w in self?.wingWidth = w }
+            .store(in: &cancellables)
+
+    }
+
+    /// Timer hit zero: open on the clock tab; tuck away if nobody comes to look.
+    func timerFired() {
+        tab = .clock
+        if !isExpanded { toggle() }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 10) { [weak self] in
+            guard let self, self.awaitingEnter else { return }
+            self.collapseNow()
+        }
+    }
+
+    /// Extra width on each side of the notch while collapsed (the "wings"
+    /// that show artwork / equaliser / timer digits).
+    @Published private(set) var wingWidth: CGFloat = 0
+
+    /// Called by the panel's tracking area. Small delays so that a cursor
+    /// merely passing over the notch doesn't pop it open, and a brief exit
+    /// (e.g. moving between controls) doesn't slam it shut.
+    private var pending: DispatchWorkItem?
+    /// Set when opened by keyboard/menu: the window growing under a cursor
+    /// that isn't over it synthesises a mouseExited we must ignore until the
+    /// mouse has genuinely come in.
+    private var awaitingEnter = false
+
+    func setHovering(_ hovering: Bool) {
+        if hovering { awaitingEnter = false }
+        else if awaitingEnter { return }
+        pending?.cancel()
+        let work = DispatchWorkItem { [weak self] in
+            guard let self else { return }
+            if !hovering { self.keyboardWanted = false }
+            withAnimation(hovering ? Motion.expand : Motion.collapse) {
+                self.isExpanded = hovering
+            }
+        }
+        pending = work
+        DispatchQueue.main.asyncAfter(
+            deadline: .now() + (hovering ? Motion.openDelay : Motion.closeDelay),
+            execute: work
+        )
+    }
+
+    /// A file being dragged over the notch opens the shelf immediately.
+    func setDragTargeted(_ zone: DropZone?) {
+        dropZone = zone
+        if zone != nil {
+            pending?.cancel()
+            awaitingEnter = false
+            tab = .shelf
+            withAnimation(Motion.expand) { isExpanded = true }
+        } else if Date().timeIntervalSince(lastDrop) > 0.4 {
+            setHovering(false)
+        }
+    }
+
+    func didDrop() {
+        lastDrop = Date()
+        pending?.cancel()
+        tab = .shelf
+    }
+
+    /// Play the login greeting: bounce out into a wide pill, hold, glide back.
+    func playGreeting() { show(.greeting) }
+
+    /// Show a transient notice in the pill. Re-showing the same kind (e.g.
+    /// repeated volume presses) just updates it and restarts the hold.
+    func show(_ new: Notice) {
+        guard !isExpanded else { return }
+        noticeHide?.cancel()
+        let sameKind = notice.map { $0.kind == new.kind } ?? false
+        if sameKind {
+            notice = new   // no spring: value tick only
+        } else {
+            withAnimation(new.kind == .greeting ? Motion.greetIn : Motion.noticeIn) { notice = new }
+        }
+        let work = DispatchWorkItem { [weak self] in
+            guard let self else { return }
+            withAnimation(self.notice?.kind == .greeting ? Motion.greetOut : Motion.noticeOut) { self.notice = nil }
+        }
+        noticeHide = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + new.hold, execute: work)
+    }
+
+    /// Keyboard / menu toggle. Opening this way pins the notch open until
+    /// the mouse leaves it or it's toggled again.
+    func toggle() {
+        pending?.cancel()
+        awaitingEnter = !isExpanded
+        withAnimation(isExpanded ? Motion.collapse : Motion.expand) { isExpanded.toggle() }
+    }
+
+    func collapseNow() {
+        pending?.cancel()
+        keyboardWanted = false
+        withAnimation(Motion.collapse) { isExpanded = false }
+    }
+
+    func preview(_ urls: [URL]) { previewHandler?(urls) }
+}
+
+/// Tunables for feel. Adjust these and rebuild; nothing else needs to change.
+enum Motion {
+    // "Snappy with a hint of life" opening, "rigid" close — see spring guide.
+    static let expand   = Animation.spring(response: 0.38, dampingFraction: 0.74)
+    static let collapse = Animation.spring(response: 0.30, dampingFraction: 0.92)
+    static let openDelay: TimeInterval  = 0.12
+    static let closeDelay: TimeInterval = 0.18
+
+    static let expandedSize = CGSize(width: 450, height: 160)
+    static let wingWidth: CGFloat = 36
+    static let wingWidthClock: CGFloat = 60
+    /// Transparent slack either side of the collapsed pill that still catches drags/hover.
+    static let catchMargin: CGFloat = 18
+
+    // Login greeting: "noticeable bounce, fun" out, "smooth glide" back.
+    static let greetIn  = Animation.spring(response: 0.55, dampingFraction: 0.58)
+    static let greetOut = Animation.spring(response: 0.6, dampingFraction: 0.85)
+    static let greetHold: TimeInterval = 3.6
+    static let greetWing: CGFloat = 176
+    static let greetHeight: CGFloat = 64
+    // Charger / bluetooth pops: quick and crisp.
+    static let noticeIn  = Animation.spring(response: 0.32, dampingFraction: 0.72)
+    static let noticeOut = Animation.spring(response: 0.35, dampingFraction: 0.9)
+    static let wings = Animation.spring(response: 0.4, dampingFraction: 0.75)
+}
+
+
+/// What the collapsed pill can temporarily turn into.
+enum Notice: Equatable {
+    case greeting
+    case power(charging: Bool, percent: Int)
+    case lowBattery(percent: Int)
+    case bluetooth(name: String, connected: Bool, isAudio: Bool)
+
+    enum Kind { case greeting, power, lowBattery, bluetooth }
+    var kind: Kind {
+        switch self {
+        case .greeting: return .greeting
+        case .power: return .power
+        case .lowBattery: return .lowBattery
+        case .bluetooth: return .bluetooth
+        }
+    }
+
+    /// Width of each wing while this notice shows.
+    var wing: CGFloat {
+        switch self {
+        case .greeting: return Motion.greetWing
+        case .power, .lowBattery: return 96
+        case .bluetooth: return 120
+        }
+    }
+
+    /// Island height; notch height for one-line pops, taller for the greeting.
+    var height: CGFloat? {
+        switch self {
+        case .greeting: return Motion.greetHeight
+        default: return nil
+        }
+    }
+
+    var hold: TimeInterval {
+        switch self {
+        case .greeting: return Motion.greetHold
+        case .power: return 2.4
+        case .lowBattery: return 4
+        case .bluetooth: return 2.6
+        }
+    }
+}
