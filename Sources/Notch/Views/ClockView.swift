@@ -57,16 +57,6 @@ struct ClockView: View {
                 }
                 .foregroundStyle(clock.timerFired ? .red : .white)
                 .contentShape(Rectangle())
-                .overlay(alignment: .bottomLeading) {
-                    // Scrub hint while hovering the idle digits.
-                    if digitsHover && scrubBase == nil && !clock.timerRunning && !clock.timerFired {
-                        Text("◂ drag ▸ · click to type")
-                            .font(.system(size: 8, weight: .medium))
-                            .foregroundStyle(.white.opacity(0.4))
-                            .offset(y: 10)
-                            .transition(.opacity)
-                    }
-                }
                 .onHover { h in
                     digitsHover = h
                     if !clock.timerRunning && !clock.timerFired {
@@ -117,7 +107,8 @@ struct ClockView: View {
         if clock.timerFired { return "Time's up" }
         if editing { return "Type a time, then ⏎" }
         if scrubBase != nil { return "Release to set" }
-        return clock.timerRunning ? "Timer" : "Timer"
+        if digitsHover && !clock.timerRunning { return "Drag ◂ ▸ or click to type" }
+        return "Timer"
     }
 
     /// Hold and drag the digits left/right. 1 s per point near the start,
