@@ -93,15 +93,14 @@ struct NotchView: View {
         .animation(Motion.wings, value: hasWings)
     }
 
-    /// The strip either side of the physical notch: tabs on the left,
-    /// contextual actions on the right.
+    /// The strips either side of the physical notch. Music + Shelf on the
+    /// left; Clock + Devices on the right, with the shelf's actions tucked
+    /// between the notch and the right-hand tabs when the shelf is showing.
     private var header: some View {
         HStack(spacing: 0) {
             HStack(spacing: 2) {
                 TabButton(symbol: "music.note", active: state.tab == .music, label: "Now Playing") { state.tab = .music }
                 TabButton(symbol: "tray.fill", active: state.tab == .shelf, badge: shelf.items.count, label: "Shelf, \(shelf.items.count) files") { state.tab = .shelf }
-                TabButton(symbol: "timer", active: state.tab == .clock, dot: clock.isActive, label: "Stopwatch and timer") { state.tab = .clock }
-                TabButton(symbol: "cable.connector.horizontal", active: state.tab == .devices, label: "Connected devices") { state.tab = .devices }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.leading, 10)
@@ -109,7 +108,7 @@ struct NotchView: View {
             // Keep a little air between the strips and the notch itself.
             Spacer().frame(width: notchSize.width + 12)
 
-            HStack(spacing: 4) {
+            HStack(spacing: 2) {
                 if state.tab == .shelf && !shelf.items.isEmpty {
                     if shelf.selection.count == 1, let item = shelf.selectedItems.first {
                         TabButton(symbol: "eye", active: false, label: "Preview \(item.name)") { state.preview([item.url]) }
@@ -122,7 +121,11 @@ struct NotchView: View {
                         shelf.removeSelectedOrAll()
                     }
                     .help(shelf.selection.isEmpty ? "Remove all files from the shelf" : "Remove selected files from the shelf")
+                    Rectangle().fill(.white.opacity(0.15)).frame(width: 1, height: 14).padding(.horizontal, 4)
                 }
+                Spacer(minLength: 0)
+                TabButton(symbol: "timer", active: state.tab == .clock, dot: clock.isActive, label: "Stopwatch and timer") { state.tab = .clock }
+                TabButton(symbol: "cable.connector.horizontal", active: state.tab == .devices, label: "Connected devices") { state.tab = .devices }
             }
             .frame(maxWidth: .infinity, alignment: .trailing)
             .padding(.trailing, 10)

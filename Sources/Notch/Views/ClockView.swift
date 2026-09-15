@@ -7,6 +7,8 @@ struct ClockView: View {
     @State private var draft = ""
     @State private var invalid = false
     @FocusState private var focused: Bool
+    @State private var scrubBase: TimeInterval? = nil
+    @State private var digitsHover = false
 
     var body: some View {
         HStack(spacing: 12) {
@@ -36,9 +38,8 @@ struct ClockView: View {
     // MARK: Timer
 
     private var timerCard: some View {
-        Card(title: clock.timerFired ? "Time's up" : (editing ? "Type a time, then ⏎" : (clock.timerRunning ? "Timer" : "Timer · click digits to type")),
-             symbol: "timer",
-             tint: clock.timerFired ? .red : (editing ? .orange : nil)) {
+        Card(title: timerTitle, symbol: "timer",
+             tint: clock.timerFired ? .red : ((editing || scrubBase != nil) ? .orange : nil)) {
             if editing {
                 TextField("25 · 12:30 · 90s · 1h20m", text: $draft)
                     .textFieldStyle(.plain)
@@ -56,11 +57,31 @@ struct ClockView: View {
                 }
                 .foregroundStyle(clock.timerFired ? .red : .white)
                 .contentShape(Rectangle())
+                .overlay(alignment: .bottomLeading) {
+                    // Scrub hint while hovering the idle digits.
+                    if digitsHover && scrubBase == nil && !clock.timerRunning && !clock.timerFired {
+                        Text("◂ drag ▸ · click to type")
+                            .font(.system(size: 8, weight: .medium))
+                            .foregroundStyle(.white.opacity(0.4))
+                            .offset(y: 10)
+                            .transition(.opacity)
+                    }
+                }
+                .onHover { h in
+                    digitsHover = h
+                    if !clock.timerRunning && !clock.timerFired {
+                        h ? NSCursor.resizeLeftRight.push() : NSCursor.pop()
+                    }
+                }
+                .gesture(scrubGesture)
                 .onTapGesture { if !clock.timerRunning && !clock.timerFired { beginEdit() } }
-                .help(clock.timerRunning ? "" : "Click to type a time")
+                .help(clock.timerRunning ? "" : "Drag left/right to set the time · click to type")
                 .accessibilityLabel("Timer \(ClockStore.format(clock.timerRemaining))")
-                .accessibilityHint(clock.timerRunning ? "" : "Click to type a length")
+                .accessibilityHint(clock.timerRunning ? "" : "Click to type a length, or use adjust actions")
                 .accessibilityAddTraits(clock.timerRunning ? [] : .isButton)
+                .accessibilityAdjustableAction { dir in
+                    clock.timerAdd(dir == .increment ? 10 : -10)
+                }
             }
         } controls: {
             if clock.timerRunning || clock.timerFired {
@@ -90,6 +111,28 @@ struct ClockView: View {
             // Focus lost elsewhere (click outside, notch closed) → drop out of editing.
             if !wanted && editing { cancelEdit() }
         }
+    }
+
+    private var timerTitle: String {
+        if clock.timerFired { return "Time's up" }
+        if editing { return "Type a time, then ⏎" }
+        if scrubBase != nil { return "Release to set" }
+        return clock.timerRunning ? "Timer" : "Timer"
+    }
+
+    /// Hold and drag the digits left/right. 1 s per point near the start,
+    /// accelerating the further you pull so long timers don't take a mile.
+    private var scrubGesture: some Gesture {
+        DragGesture(minimumDistance: 3)
+            .onChanged { v in
+                guard !clock.timerRunning, !clock.timerFired else { return }
+                if scrubBase == nil { scrubBase = clock.timerRemaining }
+                let d = Double(v.translation.width)
+                let extra = max(0, abs(d) - 60)
+                let delta = d + (d < 0 ? -1 : 1) * extra * extra / 40
+                clock.timerSet((scrubBase ?? 0) + delta.rounded())
+            }
+            .onEnded { _ in scrubBase = nil }
     }
 
     private func beginEdit() {
