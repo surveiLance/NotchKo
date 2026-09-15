@@ -29,9 +29,31 @@ struct ShelfView: View {
                     }
                     .padding(.horizontal, 4)
                 }
+                actions
             }
         }
         .padding(.top, 2)
+    }
+
+    /// Preview / select-all / remove, stacked at the shelf's right edge.
+    private var actions: some View {
+        VStack(spacing: 4) {
+            ActionButton(symbol: "eye",
+                         label: "Preview",
+                         enabled: shelf.selection.count == 1) {
+                if let item = shelf.selectedItems.first { state.preview([item.url]) }
+            }
+            ActionButton(symbol: shelf.allSelected ? "checkmark.circle.fill" : "checkmark.circle",
+                         label: shelf.allSelected ? "Deselect all" : "Select all",
+                         enabled: true, active: shelf.allSelected) { shelf.toggleSelectAll() }
+            ActionButton(symbol: "trash",
+                         label: shelf.selection.isEmpty ? "Clear shelf" : "Remove \(shelf.selection.count) selected",
+                         enabled: true, tint: .red) { shelf.removeSelectedOrAll() }
+        }
+        .padding(.leading, 6)
+        .overlay(alignment: .leading) {
+            Rectangle().fill(.white.opacity(0.12)).frame(width: 1).padding(.vertical, 6)
+        }
     }
 
     /// Selected files if any are selected, otherwise everything on the shelf.
@@ -83,6 +105,32 @@ struct ShelfView: View {
             RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .strokeBorder(.white.opacity(shelfTargeted ? 0.5 : 0.15), style: StrokeStyle(lineWidth: 1.5, dash: [5, 4]))
         )
+    }
+}
+
+private struct ActionButton: View {
+    let symbol: String
+    let label: String
+    let enabled: Bool
+    var active: Bool = false
+    var tint: Color = .white
+    let action: () -> Void
+    @State private var hovering = false
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: symbol)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(active ? Color.accentColor : tint.opacity(hovering ? 1 : 0.7))
+                .frame(width: 28, height: 28)
+                .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(.white.opacity(hovering ? 0.14 : 0.07)))
+        }
+        .buttonStyle(.plain)
+        .disabled(!enabled)
+        .opacity(enabled ? 1 : 0.3)
+        .onHover { hovering = $0 }
+        .help(label)
+        .accessibilityLabel(label)
     }
 }
 

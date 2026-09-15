@@ -108,25 +108,10 @@ struct NotchView: View {
 
             Spacer().frame(width: notchSize.width + 2 * Motion.tabNotchGap)
 
-            // Right strip: tabs hug the notch, shelf actions sit at the outer end.
+            // Right strip: tabs hug the notch.
             HStack(spacing: 2) {
                 TabButton(symbol: "timer", active: state.tab == .clock, dot: clock.isActive, label: "Stopwatch and timer") { state.tab = .clock }
                 TabButton(symbol: "cable.connector.horizontal", active: state.tab == .devices, label: "Connected devices") { state.tab = .devices }
-                Spacer(minLength: 0)
-                if state.tab == .shelf && !shelf.items.isEmpty {
-                    if shelf.selection.count == 1, let item = shelf.selectedItems.first {
-                        TabButton(symbol: "eye", active: false, label: "Preview \(item.name)") { state.preview([item.url]) }
-                    }
-                    TabButton(symbol: shelf.allSelected ? "checkmark.circle.fill" : "checkmark.circle",
-                              active: shelf.allSelected,
-                              label: shelf.allSelected ? "Deselect all" : "Select all") { shelf.toggleSelectAll() }
-                    TabButton(symbol: "trash", active: false,
-                              label: shelf.selection.isEmpty ? "Clear shelf" : "Remove \(shelf.selection.count) selected") {
-                        shelf.removeSelectedOrAll()
-                    }
-                    .help(shelf.selection.isEmpty ? "Remove all files from the shelf" : "Remove selected files from the shelf")
-                    .padding(.trailing, 10)
-                }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
