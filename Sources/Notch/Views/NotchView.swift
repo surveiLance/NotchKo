@@ -39,28 +39,26 @@ struct NotchView: View {
     }
 
     var body: some View {
+        // Everything sits inside one frame that animates between the collapsed,
+        // notice and expanded sizes, and is clipped to the notch silhouette —
+        // so content is carried (and cropped) by the black as it moves.
         ZStack(alignment: .top) {
             NotchShape(topRadius: topRadius, bottomRadius: bottomRadius)
                 .fill(.black)
-                .frame(width: size.width, height: size.height)
 
             if isOpen {
-                // Header and content get fixed heights so an over-tall tab can
-                // never push the header around; it just clips.
                 VStack(spacing: 0) {
                     header.frame(height: notchSize.height)
                     content
                         .frame(maxWidth: .infinity)
-                        .frame(height: size.height - notchSize.height - 6 - 14, alignment: .top)
+                        .frame(height: Motion.expandedSize.height - notchSize.height - 6 - 14, alignment: .top)
                         .clipped()
                         .padding(.horizontal, 14)
                         .padding(.top, 6)
                         .padding(.bottom, 14)
                 }
                 .padding(.horizontal, topRadius)
-                .frame(width: size.width, height: size.height, alignment: .top)
-                // Ease in behind the opening spring; vanish at once on close so
-                // nothing lingers while the shape shrinks.
+                .frame(width: Motion.expandedSize.width, height: Motion.expandedSize.height, alignment: .top)
                 .transition(.asymmetric(
                     insertion: .opacity.combined(with: .scale(scale: 0.96, anchor: .top))
                         .animation(.easeOut(duration: 0.22).delay(0.05)),
@@ -77,30 +75,21 @@ struct NotchView: View {
                     }
                 }
                 .frame(width: size.width, height: size.height)
-            } else if hasWings {
-                CollapsedWingsView(spotify: spotify, clock: clock, notchWidth: notchSize.width, wing: state.wingWidth)
+            } else {
+                // Always present so its wing widths animate with the pill:
+                // artwork and equalizer get squeezed into the notch on pause
+                // rather than lingering while the black shrinks around them.
+                CollapsedWingsView(spotify: spotify, clock: clock, notchWidth: notchSize.width,
+                                   wing: state.wingWidth, contentWing: state.wingContentWidth)
                     .frame(width: size.width, height: size.height)
-                    // Fade in behind the spring; on pause, fade + shrink toward
-                    // the notch quickly so the pill closes on empty black.
-                    .transition(.asymmetric(
-                        insertion: .opacity.animation(.easeOut(duration: 0.25).delay(0.1)),
-                        removal: .opacity.combined(with: .scale(scale: 0.6)).animation(.easeIn(duration: 0.16))
-                    ))
+                    .opacity(hasWings ? 1 : 0)
             }
         }
+        .frame(width: size.width, height: size.height, alignment: .top)
+        .clipShape(NotchShape(topRadius: topRadius, bottomRadius: bottomRadius))
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        // Hard clip to the notch silhouette: content can never draw outside
-        // the black shape, even mid-animation.
-        .mask(alignment: .top) {
-            NotchShape(topRadius: topRadius, bottomRadius: bottomRadius)
-                .frame(width: size.width, height: size.height)
-        }
-        .animation(hasWings ? Motion.wings : Motion.wingsOut, value: hasWings)
     }
 
-    /// The strips either side of the physical notch. Music + Shelf on the
-    /// left; Clock + Devices on the right, with the shelf's actions tucked
-    /// between the notch and the right-hand tabs when the shelf is showing.
     private var header: some View {
         HStack(spacing: 0) {
             // Left strip: tabs hug the notch.

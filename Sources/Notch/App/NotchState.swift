@@ -46,7 +46,13 @@ final class NotchState: ObservableObject {
                 return 0
             }
             .removeDuplicates()
-            .sink { [weak self] w in self?.wingWidth = w }
+            .sink { [weak self] w in
+                guard let self else { return }
+                if w > 0 { self.wingContentWidth = w }
+                // Animate at the source so the shape and the wing frames ride
+                // the same transaction.
+                withAnimation(w > self.wingWidth ? Motion.wings : Motion.wingsOut) { self.wingWidth = w }
+            }
             .store(in: &cancellables)
 
     }
@@ -64,6 +70,9 @@ final class NotchState: ObservableObject {
     /// Extra width on each side of the notch while collapsed (the "wings"
     /// that show artwork / equaliser / timer digits).
     @Published private(set) var wingWidth: CGFloat = 0
+    /// Last non-zero wing width, not animated: the wings' content is laid out
+    /// at this width so it stays put and gets clipped as `wingWidth` animates.
+    @Published private(set) var wingContentWidth: CGFloat = Motion.wingWidth
 
     /// Called by the panel's tracking area. Small delays so that a cursor
     /// merely passing over the notch doesn't pop it open, and a brief exit
@@ -176,7 +185,7 @@ enum Motion {
     static let noticeIn  = Animation.spring(response: 0.32, dampingFraction: 0.72)
     static let noticeOut = Animation.spring(response: 0.35, dampingFraction: 0.9)
     static let wings    = Animation.spring(response: 0.4, dampingFraction: 0.75)   // appearing
-    static let wingsOut = Animation.spring(response: 0.42, dampingFraction: 0.95)  // gliding back in
+    static let wingsOut = Animation.spring(response: 0.36, dampingFraction: 0.95)  // gliding back in
 }
 
 

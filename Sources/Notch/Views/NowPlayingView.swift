@@ -217,13 +217,18 @@ struct CollapsedWingsView: View {
     @ObservedObject var spotify: SpotifyClient
     @ObservedObject var clock: ClockStore
     let notchWidth: CGFloat
+    /// Animated wing width (goes to 0 on pause).
     let wing: CGFloat
+    /// Fixed layout width for the wing's content.
+    let contentWing: CGFloat
 
     var body: some View {
         HStack(spacing: 0) {
-            leftWing.frame(width: wing)
+            // Each wing clips its content, so as `wing` animates toward zero
+            // the artwork/digits slide under the notch edge.
+            leftWing.frame(width: wing, alignment: .trailing).clipped()
             Spacer().frame(width: notchWidth)
-            rightWing.frame(width: wing)
+            rightWing.frame(width: wing, alignment: .leading).clipped()
         }
         .frame(maxHeight: .infinity)
     }
@@ -231,6 +236,16 @@ struct CollapsedWingsView: View {
     /// Artwork if music is playing, otherwise the clock glyph.
     @ViewBuilder
     private var leftWing: some View {
+        leftWingContent.frame(width: contentWing, alignment: .center)
+    }
+
+    @ViewBuilder
+    private var rightWing: some View {
+        rightWingContent.frame(width: contentWing, alignment: .center)
+    }
+
+    @ViewBuilder
+    private var leftWingContent: some View {
         if spotify.isPlaying {
             Group {
                 if let image = spotify.artwork {
@@ -255,7 +270,7 @@ struct CollapsedWingsView: View {
 
     /// Timer/stopwatch digits win; otherwise the music state.
     @ViewBuilder
-    private var rightWing: some View {
+    private var rightWingContent: some View {
         if let readout = clock.pillReadout {
             // 1 Hz text update while a clock runs and the notch is closed.
             TimelineView(.periodic(from: .now, by: 1)) { _ in
