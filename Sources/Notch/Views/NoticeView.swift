@@ -32,6 +32,10 @@ struct NoticeView: View {
             Image(systemName: isAudio ? "headphones" : "keyboard")
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(connected ? .blue : .white.opacity(0.6))
+        case .info(let symbol, _):
+            Image(systemName: symbol)
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(.green)
         case .greeting:
             EmptyView()
         }
@@ -53,6 +57,11 @@ struct NoticeView: View {
                 .font(.system(size: 12, weight: .semibold, design: .rounded))
                 .foregroundStyle(.white.opacity(0.9))
                 .lineLimit(1).truncationMode(.tail)
+        case .info(_, let text):
+            Text(text)
+                .font(.system(size: 12, weight: .semibold, design: .rounded))
+                .foregroundStyle(.white.opacity(0.9))
+                .lineLimit(1).truncationMode(.tail)
         case .greeting:
             EmptyView()
         }
@@ -63,6 +72,7 @@ struct NoticeView: View {
         case .power(let c, let p): return c ? "Charging, \(p) percent" : "Unplugged, \(p) percent"
         case .lowBattery(let p): return "Low battery, \(p) percent"
         case .bluetooth(let n, let c, _): return "\(n) \(c ? "connected" : "disconnected")"
+        case .info(_, let t): return t
         case .greeting: return ""
         }
     }

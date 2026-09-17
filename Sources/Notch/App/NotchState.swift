@@ -195,14 +195,17 @@ enum Notice: Equatable {
     case power(charging: Bool, percent: Int)
     case lowBattery(percent: Int)
     case bluetooth(name: String, connected: Bool, isAudio: Bool)
+    /// Generic confirmation, e.g. "Copied · 124 words".
+    case info(symbol: String, text: String)
 
-    enum Kind { case greeting, power, lowBattery, bluetooth }
+    enum Kind { case greeting, power, lowBattery, bluetooth, info }
     var kind: Kind {
         switch self {
         case .greeting: return .greeting
         case .power: return .power
         case .lowBattery: return .lowBattery
         case .bluetooth: return .bluetooth
+        case .info: return .info
         }
     }
 
@@ -211,7 +214,7 @@ enum Notice: Equatable {
         switch self {
         case .greeting: return Motion.greetWing
         case .power, .lowBattery: return 96
-        case .bluetooth: return 120
+        case .bluetooth, .info: return 120
         }
     }
 
@@ -229,6 +232,7 @@ enum Notice: Equatable {
         case .power: return 2.4
         case .lowBattery: return 4
         case .bluetooth: return 2.6
+        case .info: return 2
         }
     }
 }

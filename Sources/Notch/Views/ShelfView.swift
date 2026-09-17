@@ -5,6 +5,7 @@ struct ShelfView: View {
     @ObservedObject var shelf: ShelfStore
     @ObservedObject var state: NotchState
     private var airDropTargeted: Bool { state.dropZone == .airDrop }
+    @State private var ocrBusy = false
 
     var body: some View {
         HStack(spacing: 14) {
@@ -35,13 +36,43 @@ struct ShelfView: View {
         .padding(.top, 2)
     }
 
-    /// Preview / select-all / remove, stacked at the shelf's right edge.
+    private var ocrTarget: ShelfItem? {
+        guard shelf.selection.count == 1, let item = shelf.selectedItems.first,
+              TextRecognizer.supports(item.url) else { return nil }
+        return item
+    }
+
+    /// Recognise text in the selected image/PDF and put it on the clipboard.
+    private func copyText(from item: ShelfItem) {
+        ocrBusy = true
+        Task {
+            let text = await TextRecognizer.recognize(item.url)
+            ocrBusy = false
+            guard let text else {
+                state.show(.info(symbol: "text.viewfinder", text: "No text found"))
+                return
+            }
+            let pb = NSPasteboard.general
+            pb.clearContents()
+            pb.setString(text, forType: .string)
+            let words = text.split(whereSeparator: { $0.isWhitespace || $0.isNewline }).count
+            state.collapseNow()
+            state.show(.info(symbol: "doc.on.clipboard.fill", text: "Copied · \(words) word\(words == 1 ? "" : "s")"))
+        }
+    }
+
+    /// Preview / copy text / select-all / remove, stacked at the shelf's right edge.
     private var actions: some View {
-        VStack(spacing: 4) {
+        VStack(spacing: 3) {
             ActionButton(symbol: "eye",
                          label: "Preview",
                          enabled: shelf.selection.count == 1) {
                 if let item = shelf.selectedItems.first { state.preview([item.url]) }
+            }
+            ActionButton(symbol: ocrBusy ? "ellipsis" : "text.viewfinder",
+                         label: "Copy text (OCR)",
+                         enabled: ocrTarget != nil && !ocrBusy) {
+                if let item = ocrTarget { copyText(from: item) }
             }
             ActionButton(symbol: shelf.allSelected ? "checkmark.circle.fill" : "checkmark.circle",
                          label: shelf.allSelected ? "Deselect all" : "Select all",
@@ -120,9 +151,9 @@ private struct ActionButton: View {
     var body: some View {
         Button(action: action) {
             Image(systemName: symbol)
-                .font(.system(size: 12, weight: .semibold))
+                .font(.system(size: 11, weight: .semibold))
                 .foregroundStyle(active ? Color.accentColor : tint.opacity(hovering ? 1 : 0.7))
-                .frame(width: 28, height: 28)
+                .frame(width: 26, height: 24)
                 .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(.white.opacity(hovering ? 0.14 : 0.07)))
         }
         .buttonStyle(.plain)
