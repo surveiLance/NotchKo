@@ -28,6 +28,9 @@ final class SpotifyClient: ObservableObject {
     @Published private(set) var accent: NSColor = .systemGreen
     @Published private(set) var shuffling = false
     @Published private(set) var repeating = false
+    /// Spotify's own volume, 0–100 (separate from the system volume).
+    @Published private(set) var volume = 100
+    private var volumeWork: DispatchWorkItem?
 
     /// Position at `positionAnchor`; extrapolate while playing.
     private var positionBase: TimeInterval = 0
@@ -144,19 +147,31 @@ final class SpotifyClient: ObservableObject {
         send("set repeating to \(repeating)")
     }
 
-    /// Shuffle/repeat aren't in the notification; read them when the player UI appears.
+    /// Shuffle/repeat/volume aren't in the notification; read them when the player UI appears.
     func refreshModes() {
         guard Self.isRunning else { return }
         Task { [weak self] in
             guard let self,
-                  let out = await self.runScript("tell application \"Spotify\" to return (shuffling as string) & \",\" & (repeating as string)")
+                  let out = await self.runScript("tell application \"Spotify\" to return (shuffling as string) & \",\" & (repeating as string) & \",\" & (sound volume as string)")
             else { return }
             let parts = out.split(separator: ",")
-            if parts.count == 2 {
+            if parts.count == 3 {
                 self.shuffling = parts[0] == "true"
                 self.repeating = parts[1] == "true"
+                if let v = Int(parts[2]) { self.volume = v }
             }
         }
+    }
+
+    /// Slider updates come in bursts while dragging; the UI reflects each
+    /// one immediately and Spotify gets told at most every 60 ms.
+    func setVolume(_ v: Int) {
+        let clamped = min(max(v, 0), 100)
+        volume = clamped
+        volumeWork?.cancel()
+        let work = DispatchWorkItem { [weak self] in self?.send("set sound volume to \(clamped)") }
+        volumeWork = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.06, execute: work)
     }
 
     /// Bring the Spotify app forward.

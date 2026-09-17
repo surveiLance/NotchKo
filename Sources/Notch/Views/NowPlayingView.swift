@@ -30,15 +30,22 @@ struct NowPlayingView: View {
                 .accessibilityAddTraits(.isButton)
 
             VStack(alignment: .leading, spacing: 0) {
-                Text(spotify.track?.name ?? "")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(.white)
-                    .lineLimit(1)
-                Text(spotify.track?.artist ?? "")
-                    .font(.system(size: 12))
-                    .foregroundStyle(.white.opacity(0.6))
-                    .lineLimit(1)
-                    .padding(.top, 2)
+                HStack(alignment: .top, spacing: 10) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(spotify.track?.name ?? "")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(.white)
+                            .lineLimit(1)
+                        Text(spotify.track?.artist ?? "")
+                            .font(.system(size: 12))
+                            .foregroundStyle(.white.opacity(0.6))
+                            .lineLimit(1)
+                    }
+                    Spacer(minLength: 4)
+                    VolumeSlider(volume: spotify.volume, accent: accent) { spotify.setVolume($0) }
+                        .frame(width: 96)
+                        .padding(.top, 3)
+                }
 
                 controls
                     .padding(.vertical, 6)
@@ -157,6 +164,68 @@ private struct Scrubber: View {
     private func format(_ t: TimeInterval) -> String {
         let s = Int(max(0, t).rounded())
         return String(format: "%d:%02d", s / 60, s % 60)
+    }
+}
+
+/// Spotify's volume: speaker glyph + thin bar. Click or drag; scroll wheel
+/// nudges by 5.
+private struct VolumeSlider: View {
+    let volume: Int
+    let accent: Color
+    let onChange: (Int) -> Void
+    @State private var hovering = false
+    @State private var dragging = false
+
+    private var symbol: String {
+        switch volume {
+        case 0: return "speaker.slash.fill"
+        case ..<34: return "speaker.wave.1.fill"
+        case ..<67: return "speaker.wave.2.fill"
+        default: return "speaker.wave.3.fill"
+        }
+    }
+    private var active: Bool { hovering || dragging }
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Image(systemName: symbol)
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundStyle(.white.opacity(active ? 0.9 : 0.5))
+                .frame(width: 14)
+                .contentShape(Rectangle())
+                .onTapGesture { onChange(volume == 0 ? 60 : 0) }
+            GeometryReader { geo in
+                let w = geo.size.width
+                ZStack(alignment: .leading) {
+                    Capsule().fill(.white.opacity(active ? 0.22 : 0.15))
+                    Capsule().fill(active ? accent : .white.opacity(0.7))
+                        .frame(width: w * CGFloat(volume) / 100)
+                }
+                .frame(height: active ? 5 : 3)
+                .frame(maxHeight: .infinity)
+                .contentShape(Rectangle())
+                .gesture(
+                    DragGesture(minimumDistance: 0)
+                        .onChanged { v in
+                            dragging = true
+                            onChange(Int((v.location.x / w * 100).rounded()))
+                        }
+                        .onEnded { _ in dragging = false }
+                )
+            }
+            .frame(height: 14)
+            Text("\(volume)")
+                .font(.system(size: 9, weight: .medium).monospacedDigit())
+                .foregroundStyle(.white.opacity(0.45))
+                .frame(width: 20, alignment: .trailing)
+                .opacity(active ? 1 : 0)
+        }
+        .onHover { hovering = $0 }
+        .animation(.easeOut(duration: 0.12), value: active)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Spotify volume")
+        .accessibilityValue("\(volume) percent")
+        .accessibilityAdjustableAction { dir in onChange(volume + (dir == .increment ? 5 : -5)) }
     }
 }
 
