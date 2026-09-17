@@ -25,8 +25,9 @@ final class NotchState: ObservableObject {
     let shelf: ShelfStore
     let clock: ClockStore
     let devices: DevicesStore
+    let prompter: TeleprompterStore
 
-    enum Tab { case home, music, shelf, clock, devices }
+    enum Tab { case home, music, shelf, clock, devices, prompter }
     private var lastDrop = Date.distantPast
     private var cancellables = Set<AnyCancellable>()
 
@@ -35,6 +36,7 @@ final class NotchState: ObservableObject {
         shelf = services.shelf
         clock = services.clock
         devices = services.devices
+        prompter = services.prompter
 
         // Wings: *playing* music gets a narrow wing for artwork/equaliser (a
         // paused track hides, you don't need to see it); a running timer or
@@ -85,7 +87,7 @@ final class NotchState: ObservableObject {
 
     func setHovering(_ hovering: Bool) {
         if hovering { awaitingEnter = false }
-        else if awaitingEnter { return }
+        else if awaitingEnter || isPrompting { return }   // prompter pins the panel open
         pending?.cancel()
         let work = DispatchWorkItem { [weak self] in
             guard let self else { return }
@@ -120,6 +122,27 @@ final class NotchState: ObservableObject {
         tab = .shelf
     }
 
+    /// Wide reading strip while the teleprompter runs; normal panel otherwise.
+    @Published private(set) var isPrompting = false
+    var expandedSize: CGSize { isPrompting ? Motion.prompterSize : Motion.expandedSize }
+
+    func startPrompter() {
+        guard prompter.hasScript else { return }
+        keyboardWanted = false
+        prompter.begin()
+        withAnimation(Motion.expand) { isPrompting = true; isExpanded = true }
+        // Give the strip a beat to appear, then roll.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { [weak self] in self?.prompter.play() }
+    }
+
+    func stopPrompter(toEditor: Bool) {
+        prompter.end()
+        withAnimation(Motion.collapse) {
+            isPrompting = false
+            if toEditor { tab = .prompter } else { isExpanded = false }
+        }
+    }
+
     /// Play the login greeting: bounce out into a wide pill, hold, glide back.
     func playGreeting() { show(.greeting) }
 
@@ -146,6 +169,7 @@ final class NotchState: ObservableObject {
     /// the mouse leaves it or it's toggled again.
     func toggle() {
         pending?.cancel()
+        if isPrompting { stopPrompter(toEditor: false); return }
         awaitingEnter = !isExpanded
         withAnimation(isExpanded ? Motion.collapse : Motion.expand) { isExpanded.toggle() }
     }
@@ -153,6 +177,7 @@ final class NotchState: ObservableObject {
     func collapseNow() {
         pending?.cancel()
         keyboardWanted = false
+        if isPrompting { prompter.end(); isPrompting = false }
         withAnimation(Motion.collapse) { isExpanded = false }
     }
 
@@ -168,6 +193,8 @@ enum Motion {
     static let closeDelay: TimeInterval = 0.18
 
     static let expandedSize = CGSize(width: 500, height: 160)
+    /// Teleprompter strip: wide and a touch taller so 3–4 lines sit under the camera.
+    static let prompterSize = CGSize(width: 660, height: 176)
     /// Space between the notch and the nearest tab on each side.
     static let tabNotchGap: CGFloat = 10
     static let wingWidth: CGFloat = 36

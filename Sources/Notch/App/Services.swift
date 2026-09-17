@@ -8,4 +8,5 @@ final class Services {
     let shelf = ShelfStore()
     let clock = ClockStore()
     let devices = DevicesStore()
+    let prompter = TeleprompterStore()
 }

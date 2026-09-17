@@ -103,6 +103,19 @@ final class NotchPanel: NSPanel {
             MainActor.assumeIsolated { state?.keyboardWanted = false }
         }
 
+        // Teleprompter toggles between the two expanded sizes.
+        state.$isPrompting
+            .removeDuplicates()
+            .sink { [weak self] prompting in
+                guard let self else { return }
+                // Grow immediately; shrink after the strip has animated away.
+                DispatchQueue.main.asyncAfter(deadline: .now() + (prompting ? 0 : 0.4)) {
+                    guard self.state.isExpanded else { return }
+                    self.setFrame(self.geometry.frame(for: self.state.expandedSize), display: true)
+                }
+            }
+            .store(in: &cancellables)
+
         // Notice pill: grow the window at once, shrink after the glide back.
         state.$notice
             .map { ($0?.wing ?? 0, $0?.height ?? 0) }
@@ -140,7 +153,7 @@ final class NotchPanel: NSPanel {
     private func resize(expanded: Bool, animatedDelay: Bool = true) {
         shrinkWork?.cancel()
         let collapsed = collapsedPanelSize
-        let target = expanded ? Motion.expandedSize : collapsed
+        let target = expanded ? state.expandedSize : collapsed
         let apply = { [weak self] in
             guard let self else { return }
             self.setFrame(self.geometry.frame(for: target), display: true)

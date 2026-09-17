@@ -160,6 +160,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     case "shelf":    state.tab = .shelf
                     case "clock":    state.tab = .clock
                     case "devices":  state.tab = .devices
+                    case "prompter": state.tab = .prompter
+                    case "prompt":   state.startPrompter()
+                    case "unprompt": state.stopPrompter(toEditor: false)
                     case "drag":     state.setDragTargeted(.shelf)
                     case "undrag":   state.setDragTargeted(nil)
                     case "greet":    state.playGreeting()
@@ -175,6 +178,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 case "timer":     self.services.clock.timerToggle()
                 case "timerset":  if let p = path, let v = Double(p) { self.services.clock.timerSet(v) }
                 case "add":       if let p = path { self.services.shelf.add([URL(fileURLWithPath: p)]) }
+                case "script":    if let p = path { self.services.prompter.script = p }
                 default: break
                 }
             }

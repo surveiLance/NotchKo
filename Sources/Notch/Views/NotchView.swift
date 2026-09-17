@@ -6,6 +6,7 @@ struct NotchView: View {
     @ObservedObject var spotify: SpotifyClient
     @ObservedObject var shelf: ShelfStore
     @ObservedObject var clock: ClockStore
+    @ObservedObject var prompter: TeleprompterStore
     let notchSize: CGSize
 
     init(state: NotchState, notchSize: CGSize) {
@@ -13,6 +14,7 @@ struct NotchView: View {
         self.spotify = state.spotify
         self.shelf = state.shelf
         self.clock = state.clock
+        self.prompter = state.prompter
         self.notchSize = notchSize
     }
 
@@ -33,7 +35,7 @@ struct NotchView: View {
     }
 
     private var size: CGSize {
-        if isOpen { return Motion.expandedSize }
+        if isOpen { return state.expandedSize }
         let wing = notice?.wing ?? state.wingWidth
         return CGSize(width: notchSize.width + 2 * wing, height: notice?.height ?? notchSize.height)
     }
@@ -46,7 +48,12 @@ struct NotchView: View {
             NotchShape(topRadius: topRadius, bottomRadius: bottomRadius)
                 .fill(.black)
 
-            if isOpen {
+            if isOpen && state.isPrompting {
+                PrompterStripView(prompter: prompter, state: state, notchSize: notchSize)
+                    .padding(.horizontal, topRadius)
+                    .frame(width: Motion.prompterSize.width, height: Motion.prompterSize.height, alignment: .top)
+                    .transition(.opacity.animation(.easeOut(duration: 0.25).delay(0.1)))
+            } else if isOpen {
                 VStack(spacing: 0) {
                     header.frame(height: notchSize.height)
                     content
@@ -106,6 +113,7 @@ struct NotchView: View {
             HStack(spacing: 2) {
                 TabButton(symbol: "timer", active: state.tab == .clock, dot: clock.isActive, label: "Stopwatch and timer") { state.tab = .clock }
                 TabButton(symbol: "cable.connector.horizontal", active: state.tab == .devices, label: "Connected devices") { state.tab = .devices }
+                TabButton(symbol: "text.alignleft", active: state.tab == .prompter, label: "Teleprompter") { state.tab = .prompter }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
@@ -122,6 +130,8 @@ struct NotchView: View {
             ClockView(clock: clock, state: state)
         case .devices:
             DevicesView(devices: state.devices)
+        case .prompter:
+            TeleprompterView(prompter: prompter, state: state)
         case .music:
             if spotify.track != nil {
                 NowPlayingView(spotify: spotify) { state.collapseNow() }
