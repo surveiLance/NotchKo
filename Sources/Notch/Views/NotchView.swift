@@ -114,6 +114,7 @@ struct NotchView: View {
                 TabButton(symbol: "timer", active: state.tab == .clock, dot: clock.isActive, label: "Stopwatch and timer") { state.tab = .clock }
                 TabButton(symbol: "cable.connector.horizontal", active: state.tab == .devices, label: "Connected devices") { state.tab = .devices }
                 TabButton(symbol: "text.alignleft", active: state.tab == .prompter, label: "Teleprompter") { state.tab = .prompter }
+                TabButton(symbol: "wand.and.stars", active: state.tab == .tools, label: "Image tools") { state.tab = .tools }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
@@ -132,6 +133,8 @@ struct NotchView: View {
             DevicesView(devices: state.devices)
         case .prompter:
             TeleprompterView(prompter: prompter, state: state)
+        case .tools:
+            ToolsView(shelf: shelf, state: state)
         case .music:
             if spotify.track != nil {
                 NowPlayingView(spotify: spotify) { state.collapseNow() }

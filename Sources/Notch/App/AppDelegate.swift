@@ -161,6 +161,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     case "clock":    state.tab = .clock
                     case "devices":  state.tab = .devices
                     case "prompter": state.tab = .prompter
+                    case "tools":    state.tab = .tools
                     case "prompt":   state.startPrompter()
                     case "unprompt": state.stopPrompter(toEditor: false)
                     case "drag":     state.setDragTargeted(.shelf)
@@ -179,6 +180,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 case "timerset":  if let p = path, let v = Double(p) { self.services.clock.timerSet(v) }
                 case "add":       if let p = path { self.services.shelf.add([URL(fileURLWithPath: p)]) }
                 case "script":    if let p = path { self.services.prompter.script = p }
+                case "cutout", "topng":
+                    if let p = path {
+                        Task {
+                            let url = URL(fileURLWithPath: p)
+                            let out = action == "cutout" ? await ImageTools.removeBackground(url) : await ImageTools.convert(url, to: .png)
+                            if let out { self.services.shelf.add([out]) }
+                            NSLog("debug \(action): \(out?.path ?? "nil")")
+                        }
+                    }
                 default: break
                 }
             }

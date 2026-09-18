@@ -27,7 +27,7 @@ final class NotchState: ObservableObject {
     let devices: DevicesStore
     let prompter: TeleprompterStore
 
-    enum Tab { case home, music, shelf, clock, devices, prompter }
+    enum Tab { case home, music, shelf, clock, devices, prompter, tools }
     private var lastDrop = Date.distantPast
     private var cancellables = Set<AnyCancellable>()
 
@@ -109,7 +109,7 @@ final class NotchState: ObservableObject {
         if zone != nil {
             pending?.cancel()
             awaitingEnter = false
-            tab = .shelf
+            if tab != .tools { tab = .shelf }   // dropping while on Tools keeps you there
             withAnimation(Motion.expand) { isExpanded = true }
         } else if Date().timeIntervalSince(lastDrop) > 0.4 {
             setHovering(false)
@@ -119,7 +119,7 @@ final class NotchState: ObservableObject {
     func didDrop() {
         lastDrop = Date()
         pending?.cancel()
-        tab = .shelf
+        if tab != .tools { tab = .shelf }
     }
 
     /// Wide reading strip while the teleprompter runs; normal panel otherwise.
