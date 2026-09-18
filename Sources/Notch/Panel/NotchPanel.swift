@@ -17,6 +17,16 @@ final class NotchPanel: NSPanel {
     private var shrinkWork: DispatchWorkItem?
     private var wingWidth: CGFloat = 0
     private var noticeWing: CGFloat = 0
+    private var expandedNow = false
+
+    /// While collapsed, only the pill (top-centre of the window) is hoverable.
+    private var hoverRegion: NSRect? {
+        guard !expandedNow, let view = contentView else { return nil }
+        let size = collapsedPanelSize
+        let b = view.bounds
+        return NSRect(x: (b.width - size.width) / 2, y: b.height - size.height,
+                      width: size.width, height: size.height)
+    }
     private var noticeHeight: CGFloat = 0
     /// Key status is opt-in so ordinary clicks never steal focus from the app you're in.
     private var allowsKey = false
@@ -48,6 +58,7 @@ final class NotchPanel: NSPanel {
         let host = HoverHostingView(rootView: root)
         host.sizingOptions = [] // we own the window frame; don't auto-fit to content
         host.onHover = { [weak state] hovering in state?.setHovering(hovering) }
+        host.hoverRect = { [weak self] in self?.hoverRegion }
         host.airDropFrame = { [weak state] in state?.airDropFrame }
         host.onDragTargeted = { [weak state] zone in
             state?.setDragTargeted(zone.map { $0 == .airDrop ? .airDrop : .shelf })
@@ -66,7 +77,14 @@ final class NotchPanel: NSPanel {
         // the close animation, so content is never clipped mid-spring.
         state.$isExpanded
             .removeDuplicates()
-            .sink { [weak self] expanded in self?.resize(expanded: expanded) }
+            .sink { [weak self] expanded in
+                guard let self else { return }
+                self.expandedNow = expanded
+                self.resize(expanded: expanded)
+                // Narrow (or widen) the hover region immediately, before the
+                // window itself catches up.
+                DispatchQueue.main.async { (self.contentView as? HoverHostingView<NotchView>)?.refreshHoverRegion() }
+            }
             .store(in: &cancellables)
 
         // Wings appear/disappear with playback; resize the collapsed window to fit.

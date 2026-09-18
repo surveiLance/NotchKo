@@ -16,6 +16,11 @@ final class HoverHostingView<Content: View>: NSHostingView<Content> {
     enum DropZone { case shelf, airDrop }
 
     var onHover: ((Bool) -> Void)?
+    /// Region that counts as "over the notch" for hover, in view coordinates.
+    /// Nil = the whole view. The panel narrows this to the pill while the
+    /// window is still oversized after a collapse, so hovering the area the
+    /// panel *used* to cover doesn't reopen it.
+    var hoverRect: (() -> NSRect?)?
     var onDragTargeted: ((DropZone?) -> Void)?
     var onDropFiles: (([URL], DropZone) -> Void)?
     /// Frame of the AirDrop zone in SwiftUI global (top-left) coordinates.
@@ -39,14 +44,16 @@ final class HoverHostingView<Content: View>: NSHostingView<Content> {
     override func updateTrackingAreas() {
         super.updateTrackingAreas()
         if let tracking { removeTrackingArea(tracking) }
-        let area = NSTrackingArea(
-            rect: bounds,
-            options: [.mouseEnteredAndExited, .activeAlways, .inVisibleRect],
-            owner: self, userInfo: nil
-        )
+        let rect = hoverRect?() ?? bounds
+        var options: NSTrackingArea.Options = [.mouseEnteredAndExited, .activeAlways]
+        if rect == bounds { options.insert(.inVisibleRect) }
+        let area = NSTrackingArea(rect: rect, options: options, owner: self, userInfo: nil)
         addTrackingArea(area)
         tracking = area
     }
+
+    /// Re-evaluate the hover region now (e.g. right after a collapse).
+    func refreshHoverRegion() { updateTrackingAreas() }
 
     // Let buttons react on the first click even though the panel never becomes key.
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
