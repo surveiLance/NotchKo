@@ -27,12 +27,13 @@ final class NotchPanel: NSPanel {
     private var expandedNow = false
 
     /// While collapsed, only the pill (top-centre of the window) is hoverable.
+    /// NSHostingView is flipped (y grows downward), so "top" is y = 0.
     private var hoverRegion: NSRect? {
         guard !expandedNow, let view = contentView else { return nil }
         let size = collapsedPanelSize
         let b = view.bounds
-        return NSRect(x: (b.width - size.width) / 2, y: b.height - size.height,
-                      width: size.width, height: size.height)
+        let y = view.isFlipped ? 0 : b.height - size.height
+        return NSRect(x: (b.width - size.width) / 2, y: y, width: size.width, height: size.height)
     }
     private var noticeHeight: CGFloat = 0
     /// Key status is opt-in so ordinary clicks never steal focus from the app you're in.
