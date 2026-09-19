@@ -11,8 +11,15 @@ import Quartz
 @MainActor
 final class NotchPanel: NSPanel {
     let state: NotchState
-    let screenRef: NSScreen
+    /// Which display this panel belongs to. Looked up fresh on every relayout
+    /// rather than holding an NSScreen, which goes stale after mode changes.
+    let displayID: CGDirectDisplayID
     private var geometry: NotchGeometry
+
+    /// Current NSScreen for this display (falls back to the main screen if it vanished).
+    var currentScreen: NSScreen {
+        NSScreen.screen(for: displayID) ?? NSScreen.main ?? NSScreen.screens[0]
+    }
     private var cancellables = Set<AnyCancellable>()
     private var shrinkWork: DispatchWorkItem?
     private var wingWidth: CGFloat = 0
@@ -34,7 +41,7 @@ final class NotchPanel: NSPanel {
 
     init(state: NotchState, screen: NSScreen) {
         self.state = state
-        self.screenRef = screen
+        self.displayID = screen.displayID
         self.geometry = NotchGeometry.detect(for: screen)
         super.init(
             contentRect: .zero,
@@ -161,7 +168,7 @@ final class NotchPanel: NSPanel {
     }
 
     func relayout() {
-        geometry = NotchGeometry.detect(for: screenRef)
+        geometry = NotchGeometry.detect(for: currentScreen)
         resize(expanded: state.isExpanded, animatedDelay: false)
         if let host = contentView as? HoverHostingView<NotchView> {
             host.rootView = NotchView(state: state, notchSize: geometry.notchSize)

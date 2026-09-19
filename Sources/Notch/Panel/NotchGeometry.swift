@@ -1,5 +1,17 @@
 import AppKit
 
+extension NSScreen {
+    /// Stable identity for a display across resolution/mode changes
+    /// (NSScreen objects can be recreated or report stale values after one).
+    var displayID: CGDirectDisplayID {
+        (deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber)?.uint32Value ?? 0
+    }
+
+    static func screen(for id: CGDirectDisplayID) -> NSScreen? {
+        screens.first { $0.displayID == id }
+    }
+}
+
 /// Where the (physical or simulated) notch is, in screen coordinates.
 struct NotchGeometry {
     let screen: NSScreen

@@ -68,16 +68,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    /// Screen changes arrive in bursts; settle before rebuilding.
+    /// Screen changes arrive in bursts; settle before rebuilding. A second
+    /// pass follows because AppKit can still report the previous frame and
+    /// safe-area insets when the first one runs (resolution changes, see #1).
     private func scheduleRebuild() {
         rebuildWork?.cancel()
         let work = DispatchWorkItem { [weak self] in
             guard let self else { return }
-            let current = Set(self.panels.map { $0.screenRef })
-            if current == Set(NSScreen.screens) {
+            let current = Set(self.panels.map(\.displayID))
+            if current == Set(NSScreen.screens.map(\.displayID)) {
                 self.panels.forEach { $0.relayout() }   // same displays, new geometry
             } else {
                 self.rebuildPanels()
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
+                self?.panels.forEach { $0.relayout() }
             }
         }
         rebuildWork = work
@@ -86,7 +91,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private var panelUnderMouse: NotchPanel? {
         let p = NSEvent.mouseLocation
-        return panels.first { NSMouseInRect(p, $0.screenRef.frame, false) } ?? panels.first
+        return panels.first { NSMouseInRect(p, $0.currentScreen.frame, false) } ?? panels.first
     }
 
     // MARK: - System notices
