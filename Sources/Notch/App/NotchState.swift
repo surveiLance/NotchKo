@@ -85,22 +85,30 @@ final class NotchState: ObservableObject {
     /// mouse has genuinely come in.
     private var awaitingEnter = false
 
+    private var lastCollapse = Date.distantPast
+
     func setHovering(_ hovering: Bool) {
         if hovering { awaitingEnter = false }
         else if awaitingEnter || isPrompting { return }   // prompter pins the panel open
         pending?.cancel()
         let work = DispatchWorkItem { [weak self] in
             guard let self else { return }
-            if !hovering { self.keyboardWanted = false }
+            if !hovering { self.keyboardWanted = false; self.lastCollapse = Date() }
             withAnimation(hovering ? Motion.expand : Motion.collapse) {
                 self.isExpanded = hovering
             }
         }
         pending = work
-        DispatchQueue.main.asyncAfter(
-            deadline: .now() + (hovering ? Motion.openDelay : Motion.closeDelay),
-            execute: work
-        )
+        // Opening: linger for openDelay, and longer if it only just closed —
+        // so brushing past, or drifting back right after closing, doesn't count.
+        let delay: TimeInterval
+        if hovering {
+            let cooldownLeft = Motion.reopenCooldown - Date().timeIntervalSince(lastCollapse)
+            delay = max(Motion.openDelay, cooldownLeft)
+        } else {
+            delay = Motion.closeDelay
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: work)
     }
 
     /// A file being dragged over the notch opens the shelf immediately.
@@ -189,8 +197,9 @@ enum Motion {
     // "Snappy with a hint of life" opening, "rigid" close — see spring guide.
     static let expand   = Animation.spring(response: 0.38, dampingFraction: 0.74)
     static let collapse = Animation.spring(response: 0.30, dampingFraction: 0.92)
-    static let openDelay: TimeInterval  = 0.12
+    static let openDelay: TimeInterval  = 0.3    // pointer must linger this long to open
     static let closeDelay: TimeInterval = 0.18
+    static let reopenCooldown: TimeInterval = 0.9 // after closing, re-entering waits this long
 
     static let expandedSize = CGSize(width: 500, height: 160)
     /// Teleprompter strip: wide and a touch taller so 3–4 lines sit under the camera.
@@ -200,7 +209,7 @@ enum Motion {
     static let wingWidth: CGFloat = 36
     static let wingWidthClock: CGFloat = 60
     /// Transparent slack either side of the collapsed pill that still catches drags/hover.
-    static let catchMargin: CGFloat = 18
+    static let catchMargin: CGFloat = 8
 
     // Login greeting: "noticeable bounce, fun" out, "smooth glide" back.
     static let greetIn  = Animation.spring(response: 0.55, dampingFraction: 0.58)
