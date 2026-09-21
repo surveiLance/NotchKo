@@ -16,6 +16,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var states: [NotchState] { panels.map(\.state) }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        setupEditMenu()
         setupStatusItem()
         #if DEBUG
         setupDebugHooks()
@@ -114,6 +115,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             // system_profiler lags the connect event slightly.
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { self?.services.devices.refresh() }
         }
+    }
+
+    // MARK: - Edit menu
+
+    /// Never shown (we're a background app), but ⌘A/⌘C/⌘V/⌘X/⌘Z only work in
+    /// text fields if an Edit menu with the standard items exists.
+    private func setupEditMenu() {
+        let main = NSMenu()
+        let edit = NSMenuItem()
+        main.addItem(edit)
+        let menu = NSMenu(title: "Edit")
+        menu.addItem(withTitle: "Undo", action: Selector(("undo:")), keyEquivalent: "z")
+        let redo = menu.addItem(withTitle: "Redo", action: Selector(("redo:")), keyEquivalent: "z")
+        redo.keyEquivalentModifierMask = [.command, .shift]
+        menu.addItem(.separator())
+        menu.addItem(withTitle: "Cut", action: #selector(NSText.cut(_:)), keyEquivalent: "x")
+        menu.addItem(withTitle: "Copy", action: #selector(NSText.copy(_:)), keyEquivalent: "c")
+        menu.addItem(withTitle: "Paste", action: #selector(NSText.paste(_:)), keyEquivalent: "v")
+        menu.addItem(withTitle: "Select All", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
+        edit.submenu = menu
+        NSApp.mainMenu = main
     }
 
     // MARK: - Status item
