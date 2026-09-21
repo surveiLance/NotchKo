@@ -67,6 +67,26 @@ permission it needs.
 
 ---
 
+## Update to the latest version
+
+Open **Terminal** and paste this — it works from anywhere:
+
+```bash
+cd ~/NotchKo && git pull && ./scripts/install.sh
+```
+
+That's it. It downloads the newest code, rebuilds, and relaunches the notch
+with your settings, shelf and login item intact. Takes about a minute.
+
+> If you cloned it somewhere other than your home folder, replace `~/NotchKo`
+> with wherever the folder is. Not sure? Drag the folder into the Terminal
+> window and it'll type the path for you.
+
+macOS may ask once more to let Notch control Spotify after an update — click
+**Allow**.
+
+---
+
 ## What it does
 
 ### 🎵 Music
