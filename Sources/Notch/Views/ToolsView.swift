@@ -9,6 +9,13 @@ struct ToolsView: View {
     @ObservedObject var state: NotchState
     @State private var busy: String? = nil
     @State private var lastOutputs: [URL] = []
+    /// Compress target in bytes.
+    @AppStorage("tools.compressTarget") private var compressTarget: Int = 1_000_000
+
+    private static let targets: [(label: String, bytes: Int)] = [
+        ("200 KB", 200_000), ("500 KB", 500_000), ("1 MB", 1_000_000),
+        ("2 MB", 2_000_000), ("5 MB", 5_000_000)
+    ]
 
     private var images: [ShelfItem] { shelf.items.filter { ImageTools.isImage($0.url) } }
     private var targets: [ShelfItem] {
@@ -102,26 +109,67 @@ struct ToolsView: View {
     // MARK: Row 2 — the tools
 
     private var tools: some View {
-        HStack(spacing: 6) {
-            Text("Convert to")
-                .font(.system(size: 10, weight: .medium)).foregroundStyle(.white.opacity(0.5))
-            ForEach(ImageTools.Format.allCases) { f in
-                ToolChip(f.label) { run("Converting to \(f.label)…") { await ImageTools.convert($0, to: f) } }
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 6) {
+                ToolLabel("Convert to")
+                ForEach(ImageTools.Format.allCases) { f in
+                    ToolChip(f.label) { run("Converting to \(f.label)…") { await ImageTools.convert($0, to: f) } }
+                }
+                Spacer(minLength: 0)
+                ToolChip("Cut out", symbol: "person.crop.rectangle") {
+                    run("Cutting out subject…") { await ImageTools.removeBackground($0) }
+                }
+                .help("Keeps the person/object, makes the background transparent (PNG)")
             }
-            Rectangle().fill(.white.opacity(0.15)).frame(width: 1, height: 16).padding(.horizontal, 4)
-            ToolChip("Cut out", symbol: "person.crop.rectangle") {
-                run("Cutting out subject…") { await ImageTools.removeBackground($0) }
+            HStack(spacing: 6) {
+                ToolLabel("Make smaller")
+                ToolChip("Compress to", symbol: "square.and.arrow.down.on.square") {
+                    run("Compressing…") { await ImageTools.compress($0, targetBytes: compressTarget) }
+                }
+                .help("Squeeze each image under the chosen size (JPEG; downscales only if it has to)")
+                Menu {
+                    ForEach(Self.targets, id: \.bytes) { t in
+                        Button(t.label) { compressTarget = t.bytes }
+                    }
+                } label: {
+                    HStack(spacing: 3) {
+                        Text(currentTargetLabel).font(.system(size: 10, weight: .semibold))
+                        Image(systemName: "chevron.down").font(.system(size: 7, weight: .bold))
+                    }
+                    .foregroundStyle(.white.opacity(0.9))
+                    .padding(.horizontal, 8).frame(height: 24)
+                    .background(RoundedRectangle(cornerRadius: 7, style: .continuous).fill(.white.opacity(0.11)))
+                }
+                .menuStyle(.borderlessButton)
+                .menuIndicator(.hidden)
+                .fixedSize()
+                .accessibilityLabel("Compression target size")
+
+                ToolChip("Fit 1920px", symbol: "arrow.down.right.and.arrow.up.left") {
+                    run("Shrinking…") { await ImageTools.shrink($0) }
+                }
+                .help("Downscale so the longest side is 1920 pixels")
+                Spacer(minLength: 0)
             }
-            .help("Keeps the person/object, makes the background transparent (PNG)")
-            ToolChip("Shrink", symbol: "arrow.down.right.and.arrow.up.left") {
-                run("Shrinking…") { await ImageTools.shrink($0) }
-            }
-            .help("Downscale so the longest side is 1920px")
-            Spacer(minLength: 0)
         }
         .disabled(targets.isEmpty)
         .opacity(targets.isEmpty ? 0.4 : 1)
-        .frame(maxHeight: .infinity)
+        .frame(maxHeight: .infinity, alignment: .top)
+    }
+
+    private struct ToolLabel: View {
+        let text: String
+        init(_ text: String) { self.text = text }
+        var body: some View {
+            Text(text)
+                .font(.system(size: 10, weight: .medium))
+                .foregroundStyle(.white.opacity(0.5))
+                .frame(width: 74, alignment: .leading)
+        }
+    }
+
+    private var currentTargetLabel: String {
+        Self.targets.first { $0.bytes == compressTarget }?.label ?? ImageTools.formatBytes(compressTarget)
     }
 
     // MARK: Actions
@@ -151,12 +199,14 @@ struct ToolsView: View {
             }
             busy = nil
             guard !outputs.isEmpty else {
-                state.show(.info(symbol: "xmark.circle", text: "No subject found"))
+                state.show(.info(symbol: "xmark.circle", text: "Nothing to do"))
                 return
             }
             shelf.add(outputs)
             lastOutputs = outputs
-            state.show(.info(symbol: "checkmark.circle.fill", text: "\(outputs.count) file\(outputs.count == 1 ? "" : "s") ready on the Shelf"))
+            let total = outputs.reduce(0) { $0 + ImageTools.fileSize($1) }
+            let detail = outputs.count == 1 ? ImageTools.formatBytes(total) : "\(outputs.count) files"
+            state.show(.info(symbol: "checkmark.circle.fill", text: "Ready · \(detail)"))
         }
     }
 }

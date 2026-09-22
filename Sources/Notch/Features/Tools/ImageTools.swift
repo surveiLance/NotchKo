@@ -56,6 +56,70 @@ enum ImageTools {
         }.value
     }
 
+    // MARK: Compress to a target size
+
+    /// Compress so the file lands at or under `targetBytes`. Tries JPEG
+    /// quality first (binary search), then progressively downscales if even
+    /// the lowest sensible quality is too big. Returns nil if the source is
+    /// already under target.
+    static func compress(_ url: URL, targetBytes: Int) async -> URL? {
+        await Task.detached(priority: .userInitiated) {
+            if fileSize(url) <= targetBytes { return nil }
+            guard let full = loadCGImage(url) else { return nil }
+
+            // Scales to try in turn; each one gets its own quality search.
+            for scale in [1.0, 0.75, 0.5, 0.35, 0.25] {
+                let image: CGImage
+                if scale == 1.0 {
+                    image = full
+                } else {
+                    let maxEdge = Int(Double(max(full.width, full.height)) * scale)
+                    guard let scaled = thumbnail(url, maxEdge: maxEdge) else { continue }
+                    image = scaled
+                }
+                if let data = bestJPEG(image, under: targetBytes) {
+                    let out = outputURL(for: url, suffix: " compressed", ext: "jpg")
+                    return (try? data.write(to: out)) == nil ? nil : out
+                }
+            }
+            return nil
+        }.value
+    }
+
+    /// Highest JPEG quality whose encoded size fits under the target.
+    private static func bestJPEG(_ image: CGImage, under target: Int) -> Data? {
+        var low = 0.05, high = 0.95
+        var best: Data?
+        // 7 passes gets within ~1% of the ideal quality.
+        for _ in 0..<7 {
+            let q = (low + high) / 2
+            guard let data = encodeJPEG(image, quality: q) else { return best }
+            if data.count <= target {
+                best = data
+                low = q
+            } else {
+                high = q
+            }
+        }
+        return best
+    }
+
+    private static func encodeJPEG(_ image: CGImage, quality: Double) -> Data? {
+        let data = NSMutableData()
+        guard let dest = CGImageDestinationCreateWithData(data, UTType.jpeg.identifier as CFString, 1, nil) else { return nil }
+        CGImageDestinationAddImage(dest, image, [kCGImageDestinationLossyCompressionQuality: quality] as CFDictionary)
+        return CGImageDestinationFinalize(dest) ? data as Data : nil
+    }
+
+    private static func thumbnail(_ url: URL, maxEdge: Int) -> CGImage? {
+        guard let src = CGImageSourceCreateWithURL(url as CFURL, nil) else { return nil }
+        return CGImageSourceCreateThumbnailAtIndex(src, 0, [
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceCreateThumbnailWithTransform: true,
+            kCGImageSourceThumbnailMaxPixelSize: maxEdge
+        ] as CFDictionary)
+    }
+
     // MARK: Shrink
 
     /// Downscale so the longest edge is at most `maxEdge` pixels.
@@ -83,12 +147,18 @@ enum ImageTools {
         let props = CGImageSourceCopyPropertiesAtIndex(src, 0, nil) as? [CFString: Any] ?? [:]
         let w = props[kCGImagePropertyPixelWidth] as? Int ?? 0
         let h = props[kCGImagePropertyPixelHeight] as? Int ?? 0
-        return CGImageSourceCreateThumbnailAtIndex(src, 0, [
-            kCGImageSourceCreateThumbnailFromImageAlways: true,
-            kCGImageSourceCreateThumbnailWithTransform: true,
-            kCGImageSourceThumbnailMaxPixelSize: max(w, h, 1),
-            kCGImageSourceShouldCache: false
-        ] as CFDictionary)
+        return thumbnail(url, maxEdge: max(w, h, 1))
+    }
+
+    static func fileSize(_ url: URL) -> Int {
+        (try? FileManager.default.attributesOfItem(atPath: url.path))?[.size] as? Int ?? 0
+    }
+
+    static func formatBytes(_ bytes: Int) -> String {
+        let f = ByteCountFormatter()
+        f.countStyle = .file
+        f.allowedUnits = bytes < 1_000_000 ? [.useKB] : [.useMB]
+        return f.string(fromByteCount: Int64(bytes))
     }
 
     private static func write(_ image: CGImage, to url: URL, type: UTType, quality: Double) -> Bool {
