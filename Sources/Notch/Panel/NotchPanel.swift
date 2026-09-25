@@ -129,13 +129,26 @@ final class NotchPanel: NSPanel {
             MainActor.assumeIsolated { state?.keyboardWanted = false }
         }
 
-        // Teleprompter toggles between the two expanded sizes.
+        // Teleprompter and mirror have their own expanded sizes.
         state.$isPrompting
             .removeDuplicates()
             .sink { [weak self] prompting in
                 guard let self else { return }
                 // Grow immediately; shrink after the strip has animated away.
                 DispatchQueue.main.asyncAfter(deadline: .now() + (prompting ? 0 : 0.4)) {
+                    guard self.state.isExpanded else { return }
+                    self.setFrame(self.geometry.frame(for: self.state.expandedSize), display: true)
+                }
+            }
+            .store(in: &cancellables)
+
+        state.$tab
+            .map { $0 == .mirror }
+            .removeDuplicates()
+            .dropFirst()
+            .sink { [weak self] toMirror in
+                guard let self else { return }
+                DispatchQueue.main.asyncAfter(deadline: .now() + (toMirror ? 0 : 0.25)) {
                     guard self.state.isExpanded else { return }
                     self.setFrame(self.geometry.frame(for: self.state.expandedSize), display: true)
                 }

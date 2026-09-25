@@ -189,6 +189,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     case "devices":  state.tab = .devices
                     case "prompter": state.tab = .prompter
                     case "tools":    state.tab = .tools
+                    case "mirror":   state.tab = .mirror
                     case "prompt":   state.startPrompter()
                     case "unprompt": state.stopPrompter(toEditor: false)
                     case "drag":     state.setDragTargeted(.shelf)

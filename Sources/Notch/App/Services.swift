@@ -9,4 +9,5 @@ final class Services {
     let clock = ClockStore()
     let devices = DevicesStore()
     let prompter = TeleprompterStore()
+    let camera = CameraController()
 }

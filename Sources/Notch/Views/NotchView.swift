@@ -58,14 +58,14 @@ struct NotchView: View {
                     header.frame(height: notchSize.height)
                     content
                         .frame(maxWidth: .infinity)
-                        .frame(height: Motion.expandedSize.height - notchSize.height - 6 - 14, alignment: .top)
+                        .frame(height: state.expandedSize.height - notchSize.height - 6 - 14, alignment: .top)
                         .clipped()
                         .padding(.horizontal, 14)
                         .padding(.top, 6)
                         .padding(.bottom, 14)
                 }
                 .padding(.horizontal, topRadius)
-                .frame(width: Motion.expandedSize.width, height: Motion.expandedSize.height, alignment: .top)
+                .frame(width: state.expandedSize.width, height: state.expandedSize.height, alignment: .top)
                 .transition(.asymmetric(
                     insertion: .opacity.combined(with: .scale(scale: 0.96, anchor: .top))
                         .animation(.easeOut(duration: 0.22).delay(0.05)),
@@ -115,6 +115,7 @@ struct NotchView: View {
                 TabButton(symbol: "cable.connector.horizontal", active: state.tab == .devices, label: "Connected devices") { state.tab = .devices }
                 TabButton(symbol: "text.alignleft", active: state.tab == .prompter, label: "Teleprompter") { state.tab = .prompter }
                 TabButton(symbol: "wand.and.stars", active: state.tab == .tools, label: "Image tools") { state.tab = .tools }
+                TabButton(symbol: "person.crop.square", active: state.tab == .mirror, label: "Mirror") { state.tab = .mirror }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
@@ -135,6 +136,8 @@ struct NotchView: View {
             TeleprompterView(prompter: prompter, state: state)
         case .tools:
             ToolsView(shelf: shelf, state: state)
+        case .mirror:
+            MirrorView(camera: state.camera)
         case .music:
             if spotify.track != nil {
                 NowPlayingView(spotify: spotify) { state.collapseNow() }

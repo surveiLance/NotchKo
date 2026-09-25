@@ -26,8 +26,9 @@ final class NotchState: ObservableObject {
     let clock: ClockStore
     let devices: DevicesStore
     let prompter: TeleprompterStore
+    let camera: CameraController
 
-    enum Tab { case home, music, shelf, clock, devices, prompter, tools }
+    enum Tab { case home, music, shelf, clock, devices, prompter, tools, mirror }
     private var lastDrop = Date.distantPast
     private var cancellables = Set<AnyCancellable>()
 
@@ -37,6 +38,7 @@ final class NotchState: ObservableObject {
         clock = services.clock
         devices = services.devices
         prompter = services.prompter
+        camera = services.camera
 
         // Wings: *playing* music gets a narrow wing for artwork/equaliser (a
         // paused track hides, you don't need to see it); a running timer or
@@ -132,7 +134,10 @@ final class NotchState: ObservableObject {
 
     /// Wide reading strip while the teleprompter runs; normal panel otherwise.
     @Published private(set) var isPrompting = false
-    var expandedSize: CGSize { isPrompting ? Motion.prompterSize : Motion.expandedSize }
+    var expandedSize: CGSize {
+        if isPrompting { return Motion.prompterSize }
+        return tab == .mirror ? Motion.mirrorSize : Motion.expandedSize
+    }
 
     func startPrompter() {
         guard prompter.hasScript else { return }
@@ -204,6 +209,8 @@ enum Motion {
     static let expandedSize = CGSize(width: 500, height: 160)
     /// Teleprompter strip: wide and a touch taller so 3–4 lines sit under the camera.
     static let prompterSize = CGSize(width: 660, height: 176)
+    /// Mirror: taller, so the 16:9 preview is big enough to actually check yourself in.
+    static let mirrorSize = CGSize(width: 460, height: 300)
     /// Space between the notch and the nearest tab on each side.
     static let tabNotchGap: CGFloat = 10
     static let wingWidth: CGFloat = 36

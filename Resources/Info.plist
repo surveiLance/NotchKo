@@ -15,6 +15,7 @@
     <key>LSUIElement</key><true/>
     <key>NSHighResolutionCapable</key><true/>
     <key>NSAppleEventsUsageDescription</key><string>Notch controls Spotify playback.</string>
+    <key>NSCameraUsageDescription</key><string>Notch shows a live mirror in the notch so you can check your framing before a call.</string>
     <key>NSBluetoothAlwaysUsageDescription</key><string>Notch shows a pop when AirPods or other Bluetooth devices connect.</string>
     <key>NSCalendarsFullAccessUsageDescription</key><string>Notch shows your next calendar event.</string>
 </dict>
