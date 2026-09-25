@@ -104,6 +104,7 @@ struct NotchView: View {
                 TabButton(symbol: "square.grid.2x2.fill", active: state.tab == .home, label: "Overview") { state.tab = .home }
                 TabButton(symbol: "music.note", active: state.tab == .music, label: "Now Playing") { state.tab = .music }
                 TabButton(symbol: "tray.fill", active: state.tab == .shelf, badge: shelf.items.count, label: "Shelf, \(shelf.items.count) files") { state.tab = .shelf }
+                TabButton(symbol: "person.crop.square", active: state.tab == .mirror, label: "Mirror") { state.tab = .mirror }
             }
             .frame(maxWidth: .infinity, alignment: .trailing)
 
@@ -115,7 +116,6 @@ struct NotchView: View {
                 TabButton(symbol: "cable.connector.horizontal", active: state.tab == .devices, label: "Connected devices") { state.tab = .devices }
                 TabButton(symbol: "text.alignleft", active: state.tab == .prompter, label: "Teleprompter") { state.tab = .prompter }
                 TabButton(symbol: "wand.and.stars", active: state.tab == .tools, label: "Image tools") { state.tab = .tools }
-                TabButton(symbol: "person.crop.square", active: state.tab == .mirror, label: "Mirror") { state.tab = .mirror }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }

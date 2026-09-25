@@ -209,8 +209,9 @@ enum Motion {
     static let expandedSize = CGSize(width: 500, height: 160)
     /// Teleprompter strip: wide and a touch taller so 3–4 lines sit under the camera.
     static let prompterSize = CGSize(width: 660, height: 176)
-    /// Mirror: taller, so the 16:9 preview is big enough to actually check yourself in.
-    static let mirrorSize = CGSize(width: 460, height: 300)
+    /// Mirror: same width as every other tab so the tab strips never reflow,
+    /// just taller so the 16:9 preview is big enough to check yourself in.
+    static let mirrorSize = CGSize(width: expandedSize.width, height: 300)
     /// Space between the notch and the nearest tab on each side.
     static let tabNotchGap: CGFloat = 10
     static let wingWidth: CGFloat = 36
