@@ -208,6 +208,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 case "timerset":  if let p = path, let v = Double(p) { self.services.clock.timerSet(v) }
                 case "add":       if let p = path { self.services.shelf.add([URL(fileURLWithPath: p)]) }
                 case "script":    if let p = path { self.services.prompter.script = p }
+                case "mirrordemo":
+                    self.services.camera.demoImage = path.flatMap { $0.isEmpty ? nil : NSImage(contentsOfFile: $0) }
                 case "cutout", "topng":
                     if let p = path {
                         Task {

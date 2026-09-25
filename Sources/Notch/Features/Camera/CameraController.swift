@@ -1,3 +1,4 @@
+import AppKit
 import AVFoundation
 import Combine
 
@@ -21,6 +22,11 @@ final class CameraController: ObservableObject {
             if isRunning { reconfigure() }
         }
     }
+    #if DEBUG
+    /// Stand-in still shown instead of the live feed, for documentation shots.
+    @Published var demoImage: NSImage?
+    #endif
+
     /// Flip horizontally so it behaves like a mirror (on by default).
     @Published var mirrored: Bool {
         didSet {

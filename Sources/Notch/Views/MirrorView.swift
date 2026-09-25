@@ -19,9 +19,22 @@ struct MirrorView: View {
         .onDisappear { camera.stop() }
     }
 
+    @ViewBuilder
+    private var feed: some View {
+        #if DEBUG
+        if let demo = camera.demoImage {
+            Image(nsImage: demo).resizable().aspectRatio(contentMode: .fill)
+        } else {
+            PreviewLayerView(session: camera.session)
+        }
+        #else
+        PreviewLayerView(session: camera.session)
+        #endif
+    }
+
     private var preview: some View {
         ZStack(alignment: .bottom) {
-            PreviewLayerView(session: camera.session)
+            feed
                 .background(Color.black)
                 // Scrim so the controls stay legible over a bright room.
                 .overlay(alignment: .bottom) {
