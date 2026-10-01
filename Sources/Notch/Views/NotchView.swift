@@ -48,7 +48,18 @@ struct NotchView: View {
             NotchShape(topRadius: topRadius, bottomRadius: bottomRadius)
                 .fill(.black)
 
-            if isOpen && state.isPrompting {
+            if isOpen, let scanURL = state.scanTarget {
+                VStack(spacing: 0) {
+                    Spacer().frame(height: notchSize.height)
+                    ScanView(state: state, url: scanURL)
+                        .padding(.horizontal, 14)
+                        .padding(.top, 6)
+                        .padding(.bottom, 14)
+                }
+                .padding(.horizontal, topRadius)
+                .frame(width: Motion.scanSize.width, height: Motion.scanSize.height, alignment: .top)
+                .transition(.opacity.animation(.easeOut(duration: 0.2).delay(0.08)))
+            } else if isOpen && state.isPrompting {
                 PrompterStripView(prompter: prompter, state: state, notchSize: notchSize)
                     .padding(.horizontal, topRadius)
                     .frame(width: Motion.prompterSize.width, height: Motion.prompterSize.height, alignment: .top)

@@ -155,6 +155,18 @@ final class NotchPanel: NSPanel {
             }
             .store(in: &cancellables)
 
+        state.$scanTarget
+            .map { $0 != nil }
+            .removeDuplicates()
+            .sink { [weak self] scanning in
+                guard let self else { return }
+                DispatchQueue.main.asyncAfter(deadline: .now() + (scanning ? 0 : 0.25)) {
+                    guard self.state.isExpanded else { return }
+                    self.setFrame(self.geometry.frame(for: self.state.expandedSize), display: true)
+                }
+            }
+            .store(in: &cancellables)
+
         // Notice pill: grow the window at once, shrink after the glide back.
         state.$notice
             .map { ($0?.wing ?? 0, $0?.height ?? 0) }

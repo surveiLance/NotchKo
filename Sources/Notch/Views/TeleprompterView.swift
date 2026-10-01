@@ -145,11 +145,9 @@ struct PrompterStripView: View {
             Spacer(minLength: 0)
 
             HStack(spacing: 4) {
-                SmallButton(symbol: "tortoise.fill", label: "Slower") { prompter.setSpeed(prompter.speed - 4) }
-                Text(String(format: "%.0f", prompter.speed))
-                    .font(.system(size: 10, weight: .semibold).monospacedDigit())
-                    .foregroundStyle(.white.opacity(0.6)).frame(width: 22)
-                SmallButton(symbol: "hare.fill", label: "Faster") { prompter.setSpeed(prompter.speed + 4) }
+                SmallButton(symbol: "minus", label: "Slower") { prompter.setSpeed(prompter.speed - 2) }
+                SpeedField(prompter: prompter, state: state)
+                SmallButton(symbol: "plus", label: "Faster") { prompter.setSpeed(prompter.speed + 2) }
             }
             HStack(spacing: 4) {
                 SmallButton(symbol: "textformat.size.smaller", label: "Smaller text") { prompter.fontSize = max(14, prompter.fontSize - 2) }
@@ -162,6 +160,63 @@ struct PrompterStripView: View {
             SmallButton(symbol: "pencil", label: "Edit script") { state.stopPrompter(toEditor: true) }
             SmallButton(symbol: "xmark", label: "Close teleprompter", tint: .red) { state.stopPrompter(toEditor: false) }
         }
+    }
+}
+
+/// Click the number to type an exact speed; otherwise ± nudges it.
+private struct SpeedField: View {
+    @ObservedObject var prompter: TeleprompterStore
+    @ObservedObject var state: NotchState
+    @State private var editing = false
+    @State private var draft = ""
+    @FocusState private var focused: Bool
+
+    var body: some View {
+        Group {
+            if editing {
+                TextField("", text: $draft)
+                    .textFieldStyle(.plain)
+                    .multilineTextAlignment(.center)
+                    .font(.system(size: 10, weight: .semibold).monospacedDigit())
+                    .foregroundStyle(.white)
+                    .focused($focused)
+                    .onSubmit(commit)
+                    .onExitCommand { end() }
+                    .onChange(of: focused) { _, f in if !f && editing { commit() } }
+                    .frame(width: 30)
+                    .background(RoundedRectangle(cornerRadius: 5).fill(.white.opacity(0.16)))
+            } else {
+                Text(String(format: "%.0f", prompter.speed))
+                    .font(.system(size: 10, weight: .semibold).monospacedDigit())
+                    .foregroundStyle(.white.opacity(0.75))
+                    .frame(width: 30, height: 22)
+                    .contentShape(Rectangle())
+                    .onTapGesture { begin() }
+            }
+        }
+        .help("Scroll speed in points per second — click to type an exact value")
+        .accessibilityLabel("Scroll speed")
+        .accessibilityValue("\(Int(prompter.speed)) points per second")
+        .accessibilityAdjustableAction { dir in
+            prompter.setSpeed(prompter.speed + (dir == .increment ? 2 : -2))
+        }
+        .onChange(of: state.keyboardWanted) { _, wanted in if !wanted && editing { end() } }
+    }
+
+    private func begin() {
+        draft = String(format: "%.0f", prompter.speed)
+        editing = true
+        state.keyboardWanted = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { focused = true }
+    }
+    private func commit() {
+        if let v = Double(draft.trimmingCharacters(in: .whitespaces)) { prompter.setSpeed(v) }
+        end()
+    }
+    private func end() {
+        editing = false
+        focused = false
+        state.keyboardWanted = false
     }
 }
 

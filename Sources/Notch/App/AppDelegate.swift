@@ -198,6 +198,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     case "power":    state.show(.power(charging: true, percent: 82))
                     case "bt":       state.show(.bluetooth(name: "Lance's AirPods Pro", connected: true, isAudio: true))
                     case "preview":  if let f = self.services.shelf.items.last { state.preview([f.url]) }
+                    case "scan":     if let p = path, !p.isEmpty { state.startScan(URL(fileURLWithPath: p)) }
+                                     else if let f = self.services.shelf.items.last { state.startScan(f.url) }
+                    case "endscan":  state.endScan()
                     default: break
                     }
                 }

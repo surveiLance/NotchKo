@@ -91,7 +91,7 @@ final class NotchState: ObservableObject {
 
     func setHovering(_ hovering: Bool) {
         if hovering { awaitingEnter = false }
-        else if awaitingEnter || isPrompting { return }   // prompter pins the panel open
+        else if awaitingEnter || isPrompting || scanTarget != nil { return }   // these pin the panel open
         pending?.cancel()
         let work = DispatchWorkItem { [weak self] in
             guard let self else { return }
@@ -134,9 +134,30 @@ final class NotchState: ObservableObject {
 
     /// Wide reading strip while the teleprompter runs; normal panel otherwise.
     @Published private(set) var isPrompting = false
+    /// Image being scanned for text, if any — takes over the panel while set.
+    @Published private(set) var scanTarget: URL?
+
     var expandedSize: CGSize {
         if isPrompting { return Motion.prompterSize }
+        if scanTarget != nil { return Motion.scanSize }
         return tab == .mirror ? Motion.mirrorSize : Motion.expandedSize
+    }
+
+    /// Open an image in the scan view (crop a region, read the text).
+    /// Expands directly — going through toggle() would see the new target
+    /// and close the scan again.
+    func startScan(_ url: URL) {
+        pending?.cancel()
+        awaitingEnter = true
+        withAnimation(Motion.expand) {
+            scanTarget = url
+            isExpanded = true
+        }
+    }
+
+    func endScan() {
+        guard scanTarget != nil else { return }
+        withAnimation(Motion.collapse) { scanTarget = nil }
     }
 
     func startPrompter() {
@@ -182,6 +203,7 @@ final class NotchState: ObservableObject {
     /// the mouse leaves it or it's toggled again.
     func toggle() {
         pending?.cancel()
+        if scanTarget != nil { endScan(); return }
         if isPrompting { stopPrompter(toEditor: false); return }
         awaitingEnter = !isExpanded
         withAnimation(isExpanded ? Motion.collapse : Motion.expand) { isExpanded.toggle() }
@@ -190,6 +212,7 @@ final class NotchState: ObservableObject {
     func collapseNow() {
         pending?.cancel()
         keyboardWanted = false
+        scanTarget = nil
         if isPrompting { prompter.end(); isPrompting = false }
         withAnimation(Motion.collapse) { isExpanded = false }
     }
@@ -212,6 +235,8 @@ enum Motion {
     /// Mirror: same width as every other tab so the tab strips never reflow,
     /// just taller so the 16:9 preview is big enough to check yourself in.
     static let mirrorSize = CGSize(width: expandedSize.width, height: 300)
+    /// Scan: wide and tall enough to pick a region out of a screenshot.
+    static let scanSize = CGSize(width: 620, height: 320)
     /// Space between the notch and the nearest tab on each side.
     static let tabNotchGap: CGFloat = 10
     static let wingWidth: CGFloat = 36
