@@ -103,7 +103,8 @@ macOS may ask once more to let Notch control Spotify after an update — click
 <p align="center"><img src="docs/portfolio/03-music.png" width="700" alt="Now Playing tab"></p>
 
 Shows whatever Spotify is playing. Click the bar to jump around in the song,
-shuffle / repeat, click the album art to open Spotify. While closed, the pill
+shuffle / repeat, Spotify's own volume slider, click the album art to open
+Spotify. While closed, the pill
 shows the album art and an equalizer in the album's colour — hidden when paused.
 
 ### 🗂 Shelf
@@ -117,7 +118,8 @@ and with images dragged out of a browser or Mail.
 - Drag files back out into any app or Finder window
 - Click files to select several, then drag them out together
 - Drop onto the blue box (or click it) → AirDrop
-- Select one file → the **eye** button shows a Quick Look preview
+- Select one file → the **eye** button shows a Quick Look preview, and the
+  **⌶ scan** button reads text out of it (see Scan, below)
 - Trash removes selected files from the shelf (or all, if nothing's selected) — nothing is deleted from your disk
 
 ### ⏱ Clock
@@ -149,18 +151,32 @@ Works on whatever images are on the Shelf (or just the ones you select):
   JPEG quality that fits, and only downscales if it has to
 - **Cut out** the subject and save a transparent PNG
 - **Fit 1920px** to downscale the long edge
-- **Copy text (OCR)** from the Shelf's eye-row — reads images and PDFs offline
-
 Originals are never touched; results land beside them.
+
+### 🔍 Scan — read text out of a picture
+
+<p align="center"><img src="docs/portfolio/12-scan.png" width="760" alt="Scan view: a cropped region of a screenshot with the recognised text highlighted"></p>
+
+Select an image on the Shelf and press the **⌶ scan** button. Then:
+
+- **Drag a box** over just the part you care about — no need to read the
+  whole screenshot
+- **Drag across the recognised text** to highlight a phrase or a couple of
+  sentences, then **Copy highlighted** (⌘C works too)
+- A **one-time code** gets its own big button at the top, with spaces and
+  line breaks squashed out (`764 362` → `764362`) — handy when you're trying
+  to type a verification code into a login form
+
+All offline, using Apple's Vision framework. Works on PDFs too.
 
 ### 📜 Teleprompter
 
 <p align="center"><img src="docs/portfolio/08-teleprompter.png" width="820" alt="Teleprompter reading strip under the camera"></p>
 
 Paste a script and hit Start — the notch widens into a reading strip directly
-under the camera, so your eyes stay on the lens. Auto-scroll with speed and
-text-size controls, a highlighted reading band, and a mirror toggle for
-beam-splitter rigs. It stays pinned open, so you can click into Zoom or OBS and
+under the camera, so your eyes stay on the lens. Auto-scroll with a highlighted
+reading band; set the speed with − / + or click the number and type an exact
+value, adjust text size, and flip the text for beam-splitter rigs. It stays pinned open, so you can click into Zoom or OBS and
 keep reading.
 
 ### 🪞 Mirror
