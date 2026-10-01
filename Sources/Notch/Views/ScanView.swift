@@ -15,13 +15,21 @@ struct ScanView: View {
     @State private var busy = false
     @State private var result: String?
     @State private var codes: [String] = []
+    /// Whatever the user has highlighted in the recognised text.
+    @State private var highlighted = ""
+
 
     var body: some View {
         HStack(spacing: 10) {
             picture
-            sidebar.frame(width: 150)
+            sidebar.frame(width: 232)
         }
-        .onAppear { image = NSImage(contentsOf: url) }
+        .onAppear {
+            image = NSImage(contentsOf: url)
+            // Highlighting and ⌘C need the panel to accept key events.
+            state.keyboardWanted = true
+        }
+        .onDisappear { state.keyboardWanted = false }
     }
 
     // MARK: Picture + crop box
@@ -143,26 +151,27 @@ struct ScanView: View {
             }
 
             if let result, !result.isEmpty {
-                if codes.isEmpty {
-                    Text("TEXT FOUND").font(.system(size: 8, weight: .semibold)).tracking(0.8)
+                HStack(spacing: 4) {
+                    Text(highlighted.isEmpty ? "DRAG TO HIGHLIGHT" : "HIGHLIGHTED")
+                        .font(.system(size: 8, weight: .semibold)).tracking(0.8)
                         .foregroundStyle(.white.opacity(0.45))
+                    Spacer(minLength: 0)
                 }
-                ScrollView {
-                    Text(result)
-                        .font(.system(size: 11))
-                        .foregroundStyle(.white.opacity(0.9))
-                        .textSelection(.enabled)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
-                .frame(maxHeight: codes.isEmpty ? .infinity : 70)
-                Button { copy(result) } label: {
-                    Label("Copy all", systemImage: "doc.on.clipboard")
+
+                SelectableText(text: result, selection: $highlighted)
+                    .frame(maxHeight: codes.isEmpty ? .infinity : 86)
+
+                Button { copy(highlighted.isEmpty ? result : highlighted) } label: {
+                    Label(highlighted.isEmpty ? "Copy all" : "Copy highlighted",
+                          systemImage: "doc.on.clipboard")
                         .font(.system(size: 10, weight: .semibold))
                         .foregroundStyle(.white)
                         .frame(maxWidth: .infinity).frame(height: 24)
-                        .background(RoundedRectangle(cornerRadius: 7).fill(.white.opacity(0.14)))
+                        .background(RoundedRectangle(cornerRadius: 7)
+                            .fill(highlighted.isEmpty ? .white.opacity(0.14) : Color.accentColor.opacity(0.75)))
                 }
                 .buttonStyle(.plain)
+                .help("⌘C works too")
             } else if !busy {
                 Text(selection == nil
                      ? "Drag a box over the part you want, or scan the whole image."
@@ -206,6 +215,9 @@ struct ScanView: View {
 
     private func finish(_ text: String?) {
         busy = false
+        highlighted = ""
+        // Vision returns one line per observation; keep them as-is so the
+        // highlighted text matches what's on screen.
         result = text
         guard let text else { codes = []; return }
         var found = TextRecognizer.codes(in: text)
@@ -228,5 +240,53 @@ struct ScanView: View {
         pb.setString(s, forType: .string)
         state.endScan()
         state.show(.info(symbol: "doc.on.clipboard.fill", text: "Copied \(s.count <= 16 ? s : "\(s.count) characters")"))
+    }
+}
+
+
+/// Read-only text you can drag-highlight, with ⌘C and ⌘A, reporting the
+/// current selection back to SwiftUI.
+private struct SelectableText: NSViewRepresentable {
+    let text: String
+    @Binding var selection: String
+
+    func makeCoordinator() -> Coordinator { Coordinator(selection: $selection) }
+
+    func makeNSView(context: Context) -> NSScrollView {
+        let scroll = NSTextView.scrollableTextView()
+        scroll.drawsBackground = false
+        scroll.hasVerticalScroller = true
+        scroll.scrollerStyle = .overlay
+        guard let tv = scroll.documentView as? NSTextView else { return scroll }
+        tv.isEditable = false
+        tv.isSelectable = true
+        tv.drawsBackground = false
+        tv.textColor = .white
+        tv.font = .systemFont(ofSize: 11)
+        tv.textContainerInset = NSSize(width: 2, height: 4)
+        tv.selectedTextAttributes = [
+            .backgroundColor: NSColor.controlAccentColor.withAlphaComponent(0.55),
+            .foregroundColor: NSColor.white
+        ]
+        tv.delegate = context.coordinator
+        return scroll
+    }
+
+    func updateNSView(_ scroll: NSScrollView, context: Context) {
+        guard let tv = scroll.documentView as? NSTextView, tv.string != text else { return }
+        tv.string = text
+        tv.setSelectedRange(NSRange(location: 0, length: 0))
+    }
+
+    final class Coordinator: NSObject, NSTextViewDelegate {
+        private let selection: Binding<String>
+        init(selection: Binding<String>) { self.selection = selection }
+
+        func textViewDidChangeSelection(_ notification: Notification) {
+            guard let tv = notification.object as? NSTextView else { return }
+            let range = tv.selectedRange()
+            let picked = range.length > 0 ? (tv.string as NSString).substring(with: range) : ""
+            if selection.wrappedValue != picked { selection.wrappedValue = picked }
+        }
     }
 }

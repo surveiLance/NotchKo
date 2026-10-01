@@ -307,7 +307,7 @@ enum Motion {
     /// just taller so the 16:9 preview is big enough to check yourself in.
     static let mirrorSize = CGSize(width: expandedSize.width, height: 300)
     /// Scan: wide and tall enough to pick a region out of a screenshot.
-    static let scanSize = CGSize(width: 620, height: 320)
+    static let scanSize = CGSize(width: 700, height: 330)
     /// Tab picker: two columns of choices.
     static let setupSize = CGSize(width: 620, height: 300)
     /// Space between the notch and the nearest tab on each side.
