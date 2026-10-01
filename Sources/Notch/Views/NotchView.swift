@@ -7,6 +7,7 @@ struct NotchView: View {
     @ObservedObject var shelf: ShelfStore
     @ObservedObject var clock: ClockStore
     @ObservedObject var prompter: TeleprompterStore
+    @ObservedObject var tabs: TabSettings
     let notchSize: CGSize
 
     init(state: NotchState, notchSize: CGSize) {
@@ -15,6 +16,7 @@ struct NotchView: View {
         self.shelf = state.shelf
         self.clock = state.clock
         self.prompter = state.prompter
+        self.tabs = state.tabs
         self.notchSize = notchSize
     }
 
@@ -48,7 +50,18 @@ struct NotchView: View {
             NotchShape(topRadius: topRadius, bottomRadius: bottomRadius)
                 .fill(.black)
 
-            if isOpen, let scanURL = state.scanTarget {
+            if isOpen, state.isChoosingTabs {
+                VStack(spacing: 0) {
+                    Spacer().frame(height: notchSize.height)
+                    SetupView(state: state, tabs: tabs, firstRun: !tabs.hasChosen)
+                        .padding(.horizontal, 14)
+                        .padding(.top, 6)
+                        .padding(.bottom, 14)
+                }
+                .padding(.horizontal, topRadius)
+                .frame(width: Motion.setupSize.width, height: Motion.setupSize.height, alignment: .top)
+                .transition(.opacity.animation(.easeOut(duration: 0.2).delay(0.08)))
+            } else if isOpen, let scanURL = state.scanTarget {
                 VStack(spacing: 0) {
                     Spacer().frame(height: notchSize.height)
                     ScanView(state: state, url: scanURL)
@@ -110,25 +123,35 @@ struct NotchView: View {
 
     private var header: some View {
         HStack(spacing: 0) {
-            // Left strip: tabs hug the notch.
-            HStack(spacing: 2) {
-                TabButton(symbol: "square.grid.2x2.fill", active: state.tab == .home, label: "Overview") { state.tab = .home }
-                TabButton(symbol: "music.note", active: state.tab == .music, label: "Now Playing") { state.tab = .music }
-                TabButton(symbol: "tray.fill", active: state.tab == .shelf, badge: shelf.items.count, label: "Shelf, \(shelf.items.count) files") { state.tab = .shelf }
-                TabButton(symbol: "person.crop.square", active: state.tab == .mirror, label: "Mirror") { state.tab = .mirror }
-            }
-            .frame(maxWidth: .infinity, alignment: .trailing)
+            HStack(spacing: 2) { strip(.left) }
+                .frame(maxWidth: .infinity, alignment: .trailing)
 
             Spacer().frame(width: notchSize.width + 2 * Motion.tabNotchGap)
 
-            // Right strip: tabs hug the notch.
             HStack(spacing: 2) {
-                TabButton(symbol: "timer", active: state.tab == .clock, dot: clock.isActive, label: "Stopwatch and timer") { state.tab = .clock }
-                TabButton(symbol: "cable.connector.horizontal", active: state.tab == .devices, label: "Connected devices") { state.tab = .devices }
-                TabButton(symbol: "text.alignleft", active: state.tab == .prompter, label: "Teleprompter") { state.tab = .prompter }
-                TabButton(symbol: "wand.and.stars", active: state.tab == .tools, label: "Image tools") { state.tab = .tools }
+                strip(.right)
+                Spacer(minLength: 8)
+                TabButton(symbol: "slider.horizontal.3", active: false, label: "Choose tabs") {
+                    state.startSetup()
+                }
+                .help("Choose which tabs appear in the notch")
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.trailing, 10)
+        }
+    }
+
+    /// Only the tabs that are switched on, in their fixed order.
+    @ViewBuilder
+    private func strip(_ side: NotchState.Tab.Side) -> some View {
+        ForEach(tabs.ordered(on: side)) { t in
+            TabButton(symbol: t.symbol,
+                      active: state.tab == t,
+                      badge: t == .shelf ? shelf.items.count : 0,
+                      dot: t == .clock && clock.isActive,
+                      label: t == .shelf ? "Shelf, \(shelf.items.count) files" : t.title) {
+                state.tab = t
+            }
         }
     }
 

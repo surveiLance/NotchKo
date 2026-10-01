@@ -59,6 +59,15 @@ greets you and it's running.
   **laptop icon in your menu bar** (top-right). That's where Quit and the
   Launch-at-Login switch live.
 
+### Choose your tabs
+
+On first launch the notch asks what you want in it — Music, Shelf, Timer,
+Devices, Teleprompter, Image tools, Mirror. Only the ones you switch on appear,
+so the notch stays as small as you need. Change your mind any time: the **sliders button** at the
+right of the tab strip, or the menu bar icon → **Choose Tabs…**
+
+<p align="center"><img src="docs/portfolio/11-setup.png" width="700" alt="The tab picker, asking which features to show"></p>
+
 ### One permission
 
 The first time you press play/pause in the notch, macOS asks:

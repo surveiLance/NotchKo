@@ -30,9 +30,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             UserDefaults.standard.set(true, forKey: firstRun)
         }
 
-        // Login "wake up" — give the desktop a beat to settle first.
+        // Login "wake up" — give the desktop a beat to settle first. On a very
+        // first run, ask which tabs they want instead.
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { [weak self] in
-            self?.states.forEach { $0.playGreeting() }
+            guard let self else { return }
+            if self.services.tabs.hasChosen {
+                self.states.forEach { $0.playGreeting() }
+            } else {
+                self.panelUnderMouse?.state.startSetup()
+            }
         }
 
         services.clock.onTimerFired = { [weak self] in self?.states.forEach { $0.timerFired() } }
@@ -153,12 +159,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let toggle = NSMenuItem(title: "Toggle Notch", action: #selector(toggleNotch), keyEquivalent: "")
         toggle.target = self
         menu.addItem(toggle)
+        let chooseTabs = NSMenuItem(title: "Choose Tabs…", action: #selector(chooseTabs), keyEquivalent: "")
+        chooseTabs.target = self
+        menu.addItem(chooseTabs)
         menu.addItem(.separator())
         menu.addItem(NSMenuItem(title: "Quit Notch", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
         statusItem.menu = menu
     }
 
     @objc private func toggleNotch() { panelUnderMouse?.state.toggle() }
+
+    @objc private func chooseTabs() { panelUnderMouse?.state.startSetup() }
 
     @objc private func toggleLoginItem(_ sender: NSMenuItem) {
         LoginItem.setEnabled(!LoginItem.isEnabled)
@@ -201,6 +212,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     case "scan":     if let p = path, !p.isEmpty { state.startScan(URL(fileURLWithPath: p)) }
                                      else if let f = self.services.shelf.items.last { state.startScan(f.url) }
                     case "endscan":  state.endScan()
+                    case "setup":    state.startSetup()
+                    case "endsetup": state.endSetup()
                     default: break
                     }
                 }

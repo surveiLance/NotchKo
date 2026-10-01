@@ -27,8 +27,57 @@ final class NotchState: ObservableObject {
     let devices: DevicesStore
     let prompter: TeleprompterStore
     let camera: CameraController
+    let tabs: TabSettings
 
-    enum Tab { case home, music, shelf, clock, devices, prompter, tools, mirror }
+    /// Order here is the order they appear in the strip.
+    enum Tab: String, CaseIterable, Identifiable {
+        case home, music, shelf, mirror, clock, devices, prompter, tools
+        var id: String { rawValue }
+
+        enum Side { case left, right }
+
+        var title: String {
+            switch self {
+            case .home: return "Overview"
+            case .music: return "Music"
+            case .shelf: return "Shelf"
+            case .mirror: return "Mirror"
+            case .clock: return "Timer"
+            case .devices: return "Devices"
+            case .prompter: return "Teleprompter"
+            case .tools: return "Image tools"
+            }
+        }
+
+        var symbol: String {
+            switch self {
+            case .home: return "square.grid.2x2.fill"
+            case .music: return "music.note"
+            case .shelf: return "tray.fill"
+            case .mirror: return "person.crop.square"
+            case .clock: return "timer"
+            case .devices: return "cable.connector.horizontal"
+            case .prompter: return "text.alignleft"
+            case .tools: return "wand.and.stars"
+            }
+        }
+
+        var blurb: String {
+            switch self {
+            case .home: return "Everything at a glance"
+            case .music: return "Spotify controls and artwork"
+            case .shelf: return "Park files, AirDrop, scan text"
+            case .mirror: return "Camera self-check"
+            case .clock: return "Stopwatch and timer"
+            case .devices: return "AirPods and battery levels"
+            case .prompter: return "Read a script under the camera"
+            case .tools: return "Convert, compress, cut out"
+            }
+        }
+
+        /// The overview is the landing tab and can't be switched off.
+        var isRequired: Bool { self == .home }
+    }
     private var lastDrop = Date.distantPast
     private var cancellables = Set<AnyCancellable>()
 
@@ -39,6 +88,7 @@ final class NotchState: ObservableObject {
         devices = services.devices
         prompter = services.prompter
         camera = services.camera
+        tabs = services.tabs
 
         // Wings: *playing* music gets a narrow wing for artwork/equaliser (a
         // paused track hides, you don't need to see it); a running timer or
@@ -91,7 +141,7 @@ final class NotchState: ObservableObject {
 
     func setHovering(_ hovering: Bool) {
         if hovering { awaitingEnter = false }
-        else if awaitingEnter || isPrompting || scanTarget != nil { return }   // these pin the panel open
+        else if awaitingEnter || isPrompting || scanTarget != nil || isChoosingTabs { return }   // these pin the panel open
         pending?.cancel()
         let work = DispatchWorkItem { [weak self] in
             guard let self else { return }
@@ -136,10 +186,13 @@ final class NotchState: ObservableObject {
     @Published private(set) var isPrompting = false
     /// Image being scanned for text, if any — takes over the panel while set.
     @Published private(set) var scanTarget: URL?
+    /// Tab picker is showing.
+    @Published private(set) var isChoosingTabs = false
 
     var expandedSize: CGSize {
         if isPrompting { return Motion.prompterSize }
         if scanTarget != nil { return Motion.scanSize }
+        if isChoosingTabs { return Motion.setupSize }
         return tab == .mirror ? Motion.mirrorSize : Motion.expandedSize
     }
 
@@ -158,6 +211,22 @@ final class NotchState: ObservableObject {
     func endScan() {
         guard scanTarget != nil else { return }
         withAnimation(Motion.collapse) { scanTarget = nil }
+    }
+
+    /// Open the tab picker (first run, or from the menu bar).
+    func startSetup() {
+        pending?.cancel()
+        awaitingEnter = true
+        withAnimation(Motion.expand) {
+            isChoosingTabs = true
+            isExpanded = true
+        }
+    }
+
+    func endSetup() {
+        guard isChoosingTabs else { return }
+        withAnimation(Motion.collapse) { isChoosingTabs = false }
+        if !tabs.isOn(tab) { tab = .home }
     }
 
     func startPrompter() {
@@ -203,6 +272,7 @@ final class NotchState: ObservableObject {
     /// the mouse leaves it or it's toggled again.
     func toggle() {
         pending?.cancel()
+        if isChoosingTabs { endSetup(); return }
         if scanTarget != nil { endScan(); return }
         if isPrompting { stopPrompter(toEditor: false); return }
         awaitingEnter = !isExpanded
@@ -213,6 +283,7 @@ final class NotchState: ObservableObject {
         pending?.cancel()
         keyboardWanted = false
         scanTarget = nil
+        isChoosingTabs = false
         if isPrompting { prompter.end(); isPrompting = false }
         withAnimation(Motion.collapse) { isExpanded = false }
     }
@@ -237,6 +308,8 @@ enum Motion {
     static let mirrorSize = CGSize(width: expandedSize.width, height: 300)
     /// Scan: wide and tall enough to pick a region out of a screenshot.
     static let scanSize = CGSize(width: 620, height: 320)
+    /// Tab picker: two columns of choices.
+    static let setupSize = CGSize(width: 620, height: 300)
     /// Space between the notch and the nearest tab on each side.
     static let tabNotchGap: CGFloat = 10
     static let wingWidth: CGFloat = 36
