@@ -142,17 +142,19 @@ final class NotchPanel: NSPanel {
             }
             .store(in: &cancellables)
 
+        // Any change that alters the expanded size — switching tabs, resizing
+        // a tab, toggling tabs — animates the window rather than snapping it,
+        // so the tab strip doesn't jump mid cross-fade.
         state.$tab
-            .map { $0 == .mirror || $0 == .agents }
             .removeDuplicates()
             .dropFirst()
-            .sink { [weak self] toMirror in
-                guard let self else { return }
-                DispatchQueue.main.asyncAfter(deadline: .now() + (toMirror ? 0 : 0.25)) {
-                    guard self.state.isExpanded else { return }
-                    self.setFrame(self.geometry.frame(for: self.state.expandedSize), display: true)
-                }
-            }
+            .sink { [weak self] _ in self?.resyncExpandedFrame(animated: true) }
+            .store(in: &cancellables)
+
+        state.tabSizes.$sizes
+            .removeDuplicates()
+            .dropFirst()
+            .sink { [weak self] _ in self?.resyncExpandedFrame(animated: true) }
             .store(in: &cancellables)
 
         state.$scanTarget
@@ -171,13 +173,7 @@ final class NotchPanel: NSPanel {
         state.tabs.$enabled
             .removeDuplicates()
             .dropFirst()
-            .sink { [weak self] _ in
-                guard let self else { return }
-                DispatchQueue.main.async {
-                    guard self.state.isExpanded else { return }
-                    self.setFrame(self.geometry.frame(for: self.state.expandedSize), display: true)
-                }
-            }
+            .sink { [weak self] _ in self?.resyncExpandedFrame(animated: true) }
             .store(in: &cancellables)
 
         state.$isChoosingTabs
@@ -215,6 +211,26 @@ final class NotchPanel: NSPanel {
         collectionBehavior = [.canJoinAllSpaces, .stationary, .fullScreenAuxiliary, .ignoresCycle]
         if !isVisible { orderFrontRegardless() }
         orderFrontRegardless()
+    }
+
+    /// Move the window to whatever size the current tab asks for. Published
+    /// properties fire on willSet, so this hops to the next runloop pass to
+    /// read the value that actually landed.
+    private func resyncExpandedFrame(animated: Bool) {
+        DispatchQueue.main.async { [weak self] in
+            guard let self, self.state.isExpanded else { return }
+            let target = self.geometry.frame(for: self.state.expandedSize)
+            guard self.frame != target else { return }
+            if animated && !Motion.reduceMotion {
+                NSAnimationContext.runAnimationGroup { ctx in
+                    ctx.duration = Motion.tabSwitchDuration
+                    ctx.timingFunction = CAMediaTimingFunction(name: .easeOut)
+                    self.animator().setFrame(target, display: true)
+                }
+            } else {
+                self.setFrame(target, display: true)
+            }
+        }
     }
 
     func relayout() {

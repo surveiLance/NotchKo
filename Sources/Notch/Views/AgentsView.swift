@@ -4,6 +4,8 @@ import SwiftUI
 /// already write locally.
 struct AgentsView: View {
     @ObservedObject var agents: AgentsStore
+    /// Called after a row sends you to its app, so the notch can tuck away.
+    var onOpen: () -> Void = {}
 
     var body: some View {
         VStack(spacing: 8) {
@@ -104,7 +106,12 @@ struct AgentsView: View {
             } else {
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 3) {
-                        ForEach(agents.sessions) { SessionRow(session: $0) }
+                        ForEach(agents.sessions) { session in
+                            SessionRow(session: session) {
+                                AgentsStore.open(session)
+                                onOpen()
+                            }
+                        }
                     }
                 }
             }
@@ -116,9 +123,20 @@ struct AgentsView: View {
 /// Project, model and the last thing it was asked to do.
 private struct SessionRow: View {
     let session: AgentsStore.Session
+    let action: () -> Void
     @State private var hovering = false
 
     var body: some View {
+        Button(action: action) { row }
+            .buttonStyle(.plain)
+            .onHover { hovering = $0 }
+            .help("Open in \(session.agent.appName)")
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("\(session.project), \(short(session.model)), \(session.activity ?? "no recent prompt"), \(AgentsStore.format(session.tokens)) tokens, \(ago(session.lastActivity))\(session.isLive ? ", working" : "")")
+            .accessibilityHint("Opens \(session.agent.appName)")
+    }
+
+    private var row: some View {
         HStack(alignment: .top, spacing: 8) {
             Circle()
                 .fill(session.isLive ? Color.green : .white.opacity(0.2))
@@ -152,12 +170,15 @@ private struct SessionRow: View {
                     .font(.system(size: 9).monospacedDigit())
                     .foregroundStyle(.white.opacity(0.35))
             }
+
+            Image(systemName: "arrow.up.forward")
+                .font(.system(size: 9, weight: .bold))
+                .foregroundStyle(.white.opacity(hovering ? 0.6 : 0))
+                .padding(.top, 3)
         }
         .padding(.horizontal, 8).padding(.vertical, 5)
-        .background(RoundedRectangle(cornerRadius: 8).fill(.white.opacity(hovering ? 0.07 : 0.03)))
-        .onHover { hovering = $0 }
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(session.project), \(short(session.model)), \(session.activity ?? "no recent prompt"), \(AgentsStore.format(session.tokens)) tokens, \(ago(session.lastActivity))\(session.isLive ? ", working" : "")")
+        .background(RoundedRectangle(cornerRadius: 8).fill(.white.opacity(hovering ? 0.08 : 0.03)))
+        .contentShape(RoundedRectangle(cornerRadius: 8))
     }
 
     private func short(_ model: String?) -> String {

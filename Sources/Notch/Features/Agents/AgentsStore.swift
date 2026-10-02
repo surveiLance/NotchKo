@@ -1,5 +1,6 @@
-import Foundation
+import AppKit
 import Combine
+import Foundation
 
 /// Live view of the coding agents running on this Mac, read from the
 /// transcripts they already write to disk — Claude Code under
@@ -12,6 +13,17 @@ final class AgentsStore: ObservableObject {
         var id: String { rawValue }
         var title: String { self == .claude ? "Claude Code" : "Codex" }
         var symbol: String { self == .claude ? "sparkle" : "chevron.left.forwardslash.chevron.right" }
+        var bundleID: String { self == .claude ? "com.anthropic.claudefordesktop" : "com.openai.codex" }
+        var appName: String { self == .claude ? "Claude" : "ChatGPT" }
+    }
+
+    /// Bring the agent's app to the front. Deep-linking to the exact session
+    /// isn't done: both apps register a URL scheme, but neither documents the
+    /// path for a session, and a wrong URL would open the wrong thing.
+    static func open(_ session: Session) {
+        let workspace = NSWorkspace.shared
+        guard let url = workspace.urlForApplication(withBundleIdentifier: session.agent.bundleID) else { return }
+        workspace.openApplication(at: url, configuration: NSWorkspace.OpenConfiguration())
     }
 
     struct Session: Identifiable, Equatable {

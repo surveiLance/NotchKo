@@ -32,6 +32,7 @@ final class NotchState: ObservableObject {
     let motion: MotionSettings
     let appearance: AppearanceSettings
     let agents: AgentsStore
+    let tabSizes: TabSizeSettings
 
     /// Order here is the order they appear in the strip.
     enum Tab: String, CaseIterable, Identifiable {
@@ -99,6 +100,7 @@ final class NotchState: ObservableObject {
         motion = services.motion
         appearance = services.appearance
         agents = services.agents
+        tabSizes = services.tabSizes
 
         // Wings: *playing* music gets a narrow wing for artwork/equaliser (a
         // paused track hides, you don't need to see it); a running timer or
@@ -206,12 +208,25 @@ final class NotchState: ObservableObject {
         if isPrompting { return Motion.prompterSize }
         if scanTarget != nil { return Motion.scanSize }
         if isChoosingTabs { return Motion.setupSize }
-        // The agents tab carries a list, so it gets a taller, wider panel.
-        if tab == .agents {
-            return CGSize(width: max(Motion.agentsSize.width, widthForTabs), height: Motion.agentsSize.height)
+        return scaled(baseSize(for: tab), by: tabSizes.size(for: tab).scale)
+    }
+
+    /// What a tab opens at before the user's size preference is applied.
+    private func baseSize(for tab: Tab) -> CGSize {
+        switch tab {
+        case .agents: return Motion.agentsSize   // carries a list
+        case .mirror: return Motion.mirrorSize   // needs a 16:9 preview
+        default:      return Motion.expandedSize
         }
-        let height = tab == .mirror ? Motion.mirrorSize.height : Motion.expandedSize.height
-        return CGSize(width: max(Motion.expandedSize.width, widthForTabs), height: height)
+    }
+
+    /// Never narrower than the tab strips need, nor wider than the screen.
+    private func scaled(_ size: CGSize, by scale: CGFloat) -> CGSize {
+        let maxWidth = max(widthForTabs, notchWidth + 80)
+        return CGSize(
+            width: min(max(size.width * scale, widthForTabs), max(maxWidth, size.width * scale)),
+            height: max(size.height * scale, notchWidth > 0 ? 80 : size.height)
+        )
     }
 
     /// Enough width that both strips fit beside the notch without crowding.
@@ -370,9 +385,8 @@ enum Motion {
     static var noticeOut: Animation { spring(0.35, 0.90) }
 
     /// Switching tabs: a quick cross-fade, nothing showy.
-    static var tabSwitch: Animation {
-        reduceMotion ? .easeOut(duration: 0.1 * k) : .easeOut(duration: 0.16 * k)
-    }
+    static var tabSwitchDuration: TimeInterval { (reduceMotion ? 0.1 : 0.2) * k }
+    static var tabSwitch: Animation { .easeOut(duration: tabSwitchDuration) }
 
     static var openDelay: TimeInterval  { 0.3 * k }   // linger before opening
     static var closeDelay: TimeInterval { 0.18 * k }

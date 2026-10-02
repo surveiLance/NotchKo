@@ -71,7 +71,8 @@ struct NotchView: View {
                 VStack(spacing: 0) {
                     Spacer().frame(height: notchSize.height)
                     SetupView(state: state, tabs: tabs, motion: state.motion,
-                                  appearance: state.appearance, firstRun: !tabs.hasChosen)
+                                  appearance: state.appearance, tabSizes: state.tabSizes,
+                                  firstRun: !tabs.hasChosen)
                         .padding(.horizontal, 14)
                         .padding(.top, 6)
                         .padding(.bottom, 14)
@@ -102,13 +103,14 @@ struct NotchView: View {
                         // Cross-fade with a small lift so switching tabs has
                         // a beat to it without feeling like a page turn.
                         .id(state.tab)
+                        .frame(maxHeight: .infinity, alignment: .top)
                         .transition(.asymmetric(
                             insertion: .opacity.combined(with: .offset(y: 6)),
                             removal: .opacity
                         ))
                         .animation(Motion.tabSwitch, value: state.tab)
                         .frame(maxWidth: .infinity)
-                        .frame(height: state.expandedSize.height - notchSize.height - 6 - 14, alignment: .top)
+                        .frame(height: max(40, state.expandedSize.height - notchSize.height - 6 - 14), alignment: .top)
                         .clipped()
                         .padding(.horizontal, 14)
                         .padding(.top, 6)
@@ -116,6 +118,7 @@ struct NotchView: View {
                 }
                 .padding(.horizontal, topRadius)
                 .frame(width: state.expandedSize.width, height: state.expandedSize.height, alignment: .top)
+                .animation(Motion.tabSwitch, value: state.expandedSize)
                 .transition(.asymmetric(
                     insertion: .opacity.combined(with: .scale(scale: 0.96, anchor: .top))
                         .animation(.easeOut(duration: 0.22).delay(0.05)),
@@ -199,7 +202,7 @@ struct NotchView: View {
         case .mirror:
             MirrorView(camera: state.camera)
         case .agents:
-            AgentsView(agents: state.agents)
+            AgentsView(agents: state.agents) { state.collapseNow() }
         case .music:
             if spotify.track != nil {
                 NowPlayingView(spotify: spotify, appearance: state.appearance) { state.collapseNow() }
