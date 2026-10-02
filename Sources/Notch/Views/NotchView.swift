@@ -81,6 +81,14 @@ struct NotchView: View {
                 VStack(spacing: 0) {
                     header.frame(height: notchSize.height)
                     content
+                        // Cross-fade with a small lift so switching tabs has
+                        // a beat to it without feeling like a page turn.
+                        .id(state.tab)
+                        .transition(.asymmetric(
+                            insertion: .opacity.combined(with: .offset(y: 6)),
+                            removal: .opacity
+                        ))
+                        .animation(Motion.tabSwitch, value: state.tab)
                         .frame(maxWidth: .infinity)
                         .frame(height: state.expandedSize.height - notchSize.height - 6 - 14, alignment: .top)
                         .clipped()
@@ -224,6 +232,7 @@ private struct TabButton: View {
         }
         .buttonStyle(.plain)
         .onHover { hovering = $0 }
+        .animation(Motion.tabSwitch, value: active)
         .accessibilityLabel(label)
     }
 }

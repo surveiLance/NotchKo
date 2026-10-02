@@ -33,9 +33,9 @@ struct OverviewView: View {
 
     private var musicCard: some View {
         Card(tint: spotify.track != nil ? accent : nil, action: { state.tab = .music }) {
-            VStack(alignment: .leading, spacing: 0) {
-                // Text and controls form one block that sits level with the
-                // artwork, rather than the buttons sinking to the bottom.
+            // One block — artwork beside the text and controls, progress just
+            // under it — centred in the card so there's no stranded gap.
+            VStack(alignment: .leading, spacing: 9) {
                 HStack(spacing: 10) {
                     artwork
                     VStack(alignment: .leading, spacing: 0) {
@@ -60,10 +60,11 @@ struct OverviewView: View {
                     }
                     Spacer(minLength: 0)
                 }
-                Spacer(minLength: 0)
                 if spotify.track != nil { progress }
             }
-            .padding(10)
+            .frame(maxHeight: .infinity, alignment: .center)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 8)
         }
         .accessibilityLabel(spotify.track.map { "Now playing \($0.name) by \($0.artist)" } ?? "Nothing playing")
     }
@@ -78,7 +79,7 @@ struct OverviewView: View {
                         .foregroundStyle(.white.opacity(0.3)))
             }
         }
-        .frame(width: 58, height: 58)
+        .frame(width: 64, height: 64)
         .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
         .shadow(color: .black.opacity(0.5), radius: 5, y: 2)
     }

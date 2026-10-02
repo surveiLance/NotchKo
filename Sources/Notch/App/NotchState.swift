@@ -358,6 +358,11 @@ enum Motion {
     static var noticeIn: Animation  { spring(0.32, 0.72) }
     static var noticeOut: Animation { spring(0.35, 0.90) }
 
+    /// Switching tabs: a quick cross-fade, nothing showy.
+    static var tabSwitch: Animation {
+        reduceMotion ? .easeOut(duration: 0.1 * k) : .easeOut(duration: 0.16 * k)
+    }
+
     static var openDelay: TimeInterval  { 0.3 * k }   // linger before opening
     static var closeDelay: TimeInterval { 0.18 * k }
     static var reopenCooldown: TimeInterval { 0.9 * k }
