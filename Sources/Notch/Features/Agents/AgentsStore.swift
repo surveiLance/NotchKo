@@ -20,6 +20,8 @@ final class AgentsStore: ObservableObject {
         let project: String
         let model: String?
         let tokens: Int
+        /// The last thing asked of it, so you can tell sessions apart.
+        let activity: String?
         let lastActivity: Date
         /// Touched in the last couple of minutes — i.e. probably still working.
         var isLive: Bool { Date().timeIntervalSince(lastActivity) < 120 }
@@ -85,6 +87,7 @@ final class AgentsStore: ObservableObject {
         var tokens = 0
         var model: String?
         var project = ""
+        var activity: String?
         var limits: [Limit] = []
     }
 
@@ -138,7 +141,8 @@ final class AgentsStore: ObservableObject {
                     out.sessions.append(Session(
                         id: url.path, agent: agent,
                         project: scan.project.isEmpty ? url.deletingLastPathComponent().lastPathComponent : scan.project,
-                        model: scan.model, tokens: scan.tokens, lastActivity: modified))
+                        model: scan.model, tokens: scan.tokens, activity: scan.activity,
+                        lastActivity: modified))
                 }
                 summary.models = models.sorted()
                 // Plan windows are worth seeing even on a day you haven't run
@@ -159,17 +163,34 @@ final class AgentsStore: ObservableObject {
     }
 
     /// Claude Code: one JSON object per line; assistant lines carry usage.
+    /// Splits a memory-mapped file into lines without building Swift Strings
+    /// for all of it — transcripts run to tens of MB and String's Unicode
+    /// handling makes that take seconds.
+    private nonisolated static func lines(of url: URL) -> [Data]? {
+        guard let data = try? Data(contentsOf: url, options: .mappedIfSafe) else { return nil }
+        var out: [Data] = []
+        out.reserveCapacity(4096)
+        var start = data.startIndex
+        while start < data.endIndex {
+            let end = data[start...].firstIndex(of: 0x0A) ?? data.endIndex
+            if end > start { out.append(data[start..<end]) }
+            start = end < data.endIndex ? data.index(after: end) : data.endIndex
+        }
+        return out
+    }
+
     private nonisolated static func scanClaude(_ url: URL) -> FileScan {
         var scan = FileScan()
-        guard let text = try? String(contentsOf: url, encoding: .utf8) else { return scan }
-        for line in text.split(separator: "\n", omittingEmptySubsequences: true) {
-            guard line.contains("\"usage\"") || line.contains("\"cwd\""),
-                  let data = line.data(using: .utf8),
-                  let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { continue }
-            if scan.project.isEmpty, let cwd = obj["cwd"] as? String {
-                scan.project = (cwd as NSString).lastPathComponent
-            }
-            guard let message = obj["message"] as? [String: Any] else { continue }
+        guard let lines = lines(of: url) else { return scan }
+        let usageKey = Data("\"usage\":{".utf8)
+        let userKey = Data("\"type\":\"user\"".utf8)
+
+        func json(_ line: Data) -> [String: Any]? {
+            try? JSONSerialization.jsonObject(with: line) as? [String: Any]
+        }
+
+        for line in lines where line.range(of: usageKey) != nil {
+            guard let obj = json(line), let message = obj["message"] as? [String: Any] else { continue }
             if let model = message["model"] as? String { scan.model = model }
             if let usage = message["usage"] as? [String: Any] {
                 // Cache reads are excluded — they're the cheap part and would
@@ -180,22 +201,69 @@ final class AgentsStore: ObservableObject {
                 scan.tokens += input + created + output
             }
         }
+
+        // Not every line carries cwd, so check a handful rather than just the
+        // first — otherwise the encoded folder name leaks into the UI.
+        for line in lines.prefix(50) {
+            if let obj = json(line), let cwd = obj["cwd"] as? String {
+                scan.project = (cwd as NSString).lastPathComponent
+                break
+            }
+        }
+
+        // Latest prompt: walk back and stop at the first readable one.
+        for line in lines.reversed() where line.range(of: userKey) != nil {
+            guard let obj = json(line), let message = obj["message"] as? [String: Any],
+                  let p = prompt(from: message["content"]) else { continue }
+            scan.activity = p
+            break
+        }
         return scan
+    }
+
+    /// First readable line of a user turn, skipping system reminders and
+    /// tool results, trimmed to something that fits a row.
+    private nonisolated static func prompt(from content: Any?) -> String? {
+        var candidates: [String] = []
+        if let s = content as? String {
+            candidates = [s]
+        } else if let blocks = content as? [[String: Any]] {
+            candidates = blocks.compactMap { $0["type"] as? String == "text" ? $0["text"] as? String : nil }
+        }
+        for raw in candidates {
+            // Strip attachment markers the CLIs splice in, then take the first
+            // real line of what was actually typed.
+            var t = raw
+            while let r = t.range(of: #"\[Image:[^\]]*\]"#, options: .regularExpression) {
+                t.removeSubrange(r)
+            }
+            t = t.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !t.isEmpty, !t.hasPrefix("<"), !t.hasPrefix("#"),
+                  !t.contains("TRANSCRIPT START"), !t.hasPrefix("Caveat:") else { continue }
+            if let firstLine = t.split(separator: "\n").first(where: { !$0.trimmingCharacters(in: .whitespaces).isEmpty }) {
+                t = String(firstLine).trimmingCharacters(in: .whitespaces)
+            }
+            guard !t.isEmpty else { continue }
+            return t.count > 110 ? String(t.prefix(110)) + "…" : t
+        }
+        return nil
     }
 
     /// Codex: rollout files with session_meta plus token_count events that
     /// carry running totals and the plan's rate limits.
     private nonisolated static func scanCodex(_ url: URL) -> FileScan {
         var scan = FileScan()
-        guard let text = try? String(contentsOf: url, encoding: .utf8) else { return scan }
-        for line in text.split(separator: "\n", omittingEmptySubsequences: true) {
-            guard let data = line.data(using: .utf8),
-                  let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+        guard let lines = lines(of: url) else { return scan }
+        for line in lines {
+            guard let obj = try? JSONSerialization.jsonObject(with: line) as? [String: Any],
                   let payload = obj["payload"] as? [String: Any] else { continue }
             if let cwd = payload["cwd"] as? String, scan.project.isEmpty {
                 scan.project = (cwd as NSString).lastPathComponent
             }
             if let model = payload["model"] as? String { scan.model = model }
+            if payload["role"] as? String == "user", let p = prompt(from: payload["content"]) {
+                scan.activity = p
+            }
             if let info = payload["info"] as? [String: Any],
                let total = info["total_token_usage"] as? [String: Any] {
                 // Running total, so take the latest rather than summing.

@@ -143,7 +143,7 @@ final class NotchPanel: NSPanel {
             .store(in: &cancellables)
 
         state.$tab
-            .map { $0 == .mirror }
+            .map { $0 == .mirror || $0 == .agents }
             .removeDuplicates()
             .dropFirst()
             .sink { [weak self] toMirror in

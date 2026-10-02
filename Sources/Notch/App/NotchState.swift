@@ -206,6 +206,10 @@ final class NotchState: ObservableObject {
         if isPrompting { return Motion.prompterSize }
         if scanTarget != nil { return Motion.scanSize }
         if isChoosingTabs { return Motion.setupSize }
+        // The agents tab carries a list, so it gets a taller, wider panel.
+        if tab == .agents {
+            return CGSize(width: max(Motion.agentsSize.width, widthForTabs), height: Motion.agentsSize.height)
+        }
         let height = tab == .mirror ? Motion.mirrorSize.height : Motion.expandedSize.height
         return CGSize(width: max(Motion.expandedSize.width, widthForTabs), height: height)
     }
@@ -396,6 +400,8 @@ enum Motion {
     /// Mirror: same width as every other tab so the tab strips never reflow,
     /// just taller so the 16:9 preview is big enough to check yourself in.
     static let mirrorSize = CGSize(width: expandedSize.width, height: 300)
+    /// Agents: room for both summaries and a scrollable list of projects.
+    static let agentsSize = CGSize(width: 760, height: 376)
     /// Scan: wide and tall enough to pick a region out of a screenshot.
     static let scanSize = CGSize(width: 700, height: 330)
     /// Tab picker: two columns of choices.

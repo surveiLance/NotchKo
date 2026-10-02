@@ -1,17 +1,17 @@
 import SwiftUI
 
-/// What Claude Code and Codex have been doing today, read from the
-/// transcripts they write locally.
+/// What Claude Code and Codex are doing, read from the transcripts they
+/// already write locally.
 struct AgentsView: View {
     @ObservedObject var agents: AgentsStore
 
     var body: some View {
-        HStack(spacing: 10) {
-            VStack(spacing: 6) {
+        VStack(spacing: 8) {
+            HStack(spacing: 8) {
                 agentCard(.claude)
                 agentCard(.codex)
             }
-            .frame(width: 210)
+            .frame(height: 54)
 
             sessions
         }
@@ -22,38 +22,54 @@ struct AgentsView: View {
 
     private func agentCard(_ agent: AgentsStore.Agent) -> some View {
         let s = agents.summary[agent] ?? .init()
-        return HStack(spacing: 8) {
+        return HStack(spacing: 9) {
             Image(systemName: agent.symbol)
-                .font(.system(size: 12, weight: .semibold))
+                .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(agent == .claude ? Color.orange : Color.cyan)
-                .frame(width: 24, height: 24)
+                .frame(width: 26, height: 26)
                 .background(Circle().fill(.white.opacity(0.08)))
 
             VStack(alignment: .leading, spacing: 1) {
                 Text(agent.title)
-                    .font(.system(size: 11, weight: .semibold)).foregroundStyle(.white)
-                Text(s.sessionsToday == 0
-                     ? (s.limits.isEmpty ? "Nothing today" : "Nothing today · last window below")
-                     : "\(AgentsStore.format(s.tokensToday)) · \(s.sessionsToday) session\(s.sessionsToday == 1 ? "" : "s")")
+                    .font(.system(size: 11.5, weight: .semibold)).foregroundStyle(.white)
+                Text(subtitle(s))
                     .font(.system(size: 9.5)).foregroundStyle(.white.opacity(0.5)).lineLimit(1)
             }
             Spacer(minLength: 0)
 
-            // Only Codex reports plan windows.
-            if !s.limits.isEmpty {
-                HStack(spacing: 6) {
-                    ForEach(s.limits, id: \.label) { limit in
-                        LimitDial(limit: limit, stale: s.limitsAreStale)
-                    }
+            HStack(spacing: 7) {
+                // Only Codex records plan windows locally; Claude Code does
+                // not, so its card shows usage without a dial rather than a
+                // number that would be made up.
+                ForEach(s.limits, id: \.label) { limit in
+                    Dial(percent: limit.usedPercent,
+                         caption: limit.label == "Weekly" ? "wk" : "5h",
+                         hint: resetHint(limit, stale: s.limitsAreStale),
+                         dimmed: s.limitsAreStale)
                 }
             }
         }
-        .padding(.horizontal, 9)
+        .padding(.horizontal, 10)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(RoundedRectangle(cornerRadius: 11, style: .continuous).fill(.white.opacity(0.06)))
         .overlay(RoundedRectangle(cornerRadius: 11, style: .continuous).strokeBorder(.white.opacity(0.09), lineWidth: 1))
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(agent.title), \(AgentsStore.format(s.tokensToday)) tokens today")
+        .accessibilityLabel("\(agent.title), \(subtitle(s))")
+    }
+
+    private func subtitle(_ s: AgentsStore.Summary) -> String {
+        guard s.sessionsToday > 0 else {
+            return s.limits.isEmpty ? "Nothing today" : "Nothing today · last window"
+        }
+        return "\(AgentsStore.format(s.tokensToday)) · \(s.sessionsToday) session\(s.sessionsToday == 1 ? "" : "s")"
+    }
+
+    private func resetHint(_ limit: AgentsStore.Limit, stale: Bool) -> String {
+        let prefix = stale ? "\(limit.label) (last session)" : limit.label
+        guard let resets = limit.resetsAt else { return "\(prefix) window" }
+        let mins = Int(resets.timeIntervalSinceNow / 60)
+        if mins <= 0 { return "\(prefix) — window has reset" }
+        return mins < 60 ? "\(prefix) — resets in \(mins)m" : "\(prefix) — resets in \(mins / 60)h"
     }
 
     // MARK: Session list
@@ -61,8 +77,8 @@ struct AgentsView: View {
     private var sessions: some View {
         VStack(alignment: .leading, spacing: 3) {
             HStack(spacing: 4) {
-                Text(agents.liveCount > 0 ? "\(agents.liveCount) WORKING" : "TODAY")
-                    .font(.system(size: 8, weight: .semibold)).tracking(0.8)
+                Text(agents.liveCount > 0 ? "\(agents.liveCount) WORKING NOW" : "TODAY")
+                    .font(.system(size: 8, weight: .semibold)).tracking(0.9)
                     .foregroundStyle(agents.liveCount > 0 ? .green : .white.opacity(0.4))
                 Spacer(minLength: 0)
                 Button { agents.refresh() } label: {
@@ -87,68 +103,85 @@ struct AgentsView: View {
                 .frame(maxWidth: .infinity)
             } else {
                 ScrollView(showsIndicators: false) {
-                    VStack(spacing: 2) {
-                        ForEach(agents.sessions.prefix(12)) { SessionRow(session: $0) }
+                    VStack(spacing: 3) {
+                        ForEach(agents.sessions) { SessionRow(session: $0) }
                     }
                 }
             }
         }
+        .frame(maxHeight: .infinity)
     }
 }
 
+/// Project, model and the last thing it was asked to do.
 private struct SessionRow: View {
     let session: AgentsStore.Session
     @State private var hovering = false
 
     var body: some View {
-        HStack(spacing: 7) {
+        HStack(alignment: .top, spacing: 8) {
             Circle()
-                .fill(session.isLive ? Color.green : .white.opacity(0.22))
+                .fill(session.isLive ? Color.green : .white.opacity(0.2))
                 .frame(width: 6, height: 6)
-            Text(session.project)
-                .font(.system(size: 11, weight: .medium))
-                .foregroundStyle(.white.opacity(0.9)).lineLimit(1)
-            if let model = session.model {
-                Text(short(model))
-                    .font(.system(size: 9))
-                    .foregroundStyle(.white.opacity(0.4)).lineLimit(1)
+                .padding(.top, 5)
+
+            VStack(alignment: .leading, spacing: 1) {
+                HStack(spacing: 6) {
+                    Text(session.project)
+                        .font(.system(size: 11.5, weight: .semibold))
+                        .foregroundStyle(.white).lineLimit(1)
+                    Text(short(session.model))
+                        .font(.system(size: 8.5, weight: .medium))
+                        .foregroundStyle(.white.opacity(0.55))
+                        .padding(.horizontal, 5).padding(.vertical, 1)
+                        .background(Capsule().fill(.white.opacity(0.09)))
+                }
+                Text(session.activity ?? "—")
+                    .font(.system(size: 10))
+                    .foregroundStyle(.white.opacity(session.activity == nil ? 0.25 : 0.5))
+                    .lineLimit(1)
             }
-            Spacer(minLength: 4)
-            Text(AgentsStore.format(session.tokens))
-                .font(.system(size: 10, weight: .semibold).monospacedDigit())
-                .foregroundStyle(.white.opacity(0.65))
-            Text(ago(session.lastActivity))
-                .font(.system(size: 9).monospacedDigit())
-                .foregroundStyle(.white.opacity(0.35))
-                .frame(width: 32, alignment: .trailing)
+
+            Spacer(minLength: 6)
+
+            VStack(alignment: .trailing, spacing: 1) {
+                Text(AgentsStore.format(session.tokens))
+                    .font(.system(size: 11, weight: .semibold).monospacedDigit())
+                    .foregroundStyle(.white.opacity(0.75))
+                Text(ago(session.lastActivity))
+                    .font(.system(size: 9).monospacedDigit())
+                    .foregroundStyle(.white.opacity(0.35))
+            }
         }
-        .padding(.horizontal, 7).padding(.vertical, 4)
-        .background(RoundedRectangle(cornerRadius: 7).fill(.white.opacity(hovering ? 0.07 : 0)))
+        .padding(.horizontal, 8).padding(.vertical, 5)
+        .background(RoundedRectangle(cornerRadius: 8).fill(.white.opacity(hovering ? 0.07 : 0.03)))
         .onHover { hovering = $0 }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(session.project), \(AgentsStore.format(session.tokens)) tokens, \(ago(session.lastActivity)) ago\(session.isLive ? ", working" : "")")
+        .accessibilityLabel("\(session.project), \(short(session.model)), \(session.activity ?? "no recent prompt"), \(AgentsStore.format(session.tokens)) tokens, \(ago(session.lastActivity))\(session.isLive ? ", working" : "")")
     }
 
-    /// "claude-opus-5" → "opus-5", "gpt-5.6-sol" → "gpt-5.6-sol".
-    private func short(_ model: String) -> String {
-        model.hasPrefix("claude-") ? String(model.dropFirst("claude-".count)) : model
+    private func short(_ model: String?) -> String {
+        guard let model else { return "—" }
+        return model.hasPrefix("claude-") ? String(model.dropFirst("claude-".count)) : model
     }
 
     private func ago(_ date: Date) -> String {
         let s = Int(Date().timeIntervalSince(date))
         if s < 60 { return "now" }
-        if s < 3600 { return "\(s / 60)m" }
-        return "\(s / 3600)h"
+        if s < 3600 { return "\(s / 60)m ago" }
+        return "\(s / 3600)h ago"
     }
 }
 
-/// Small ring showing how much of a usage window is gone.
-private struct LimitDial: View {
-    let limit: AgentsStore.Limit
-    var stale = false
+/// Ring showing how much of a window or budget is gone.
+private struct Dial: View {
+    let percent: Double
+    let caption: String
+    let hint: String
+    var dimmed = false
 
     private var tint: Color {
-        switch limit.usedPercent {
+        switch percent {
         case 85...: return .red
         case 60...: return .orange
         default: return .green
@@ -160,28 +193,19 @@ private struct LimitDial: View {
             ZStack {
                 Circle().stroke(.white.opacity(0.14), lineWidth: 3)
                 Circle()
-                    .trim(from: 0, to: min(limit.usedPercent / 100, 1))
-                    .stroke(tint.opacity(stale ? 0.55 : 1), style: StrokeStyle(lineWidth: 3, lineCap: .round))
+                    .trim(from: 0, to: min(max(percent, 0) / 100, 1))
+                    .stroke(tint.opacity(dimmed ? 0.5 : 1), style: StrokeStyle(lineWidth: 3, lineCap: .round))
                     .rotationEffect(.degrees(-90))
-                Text("\(Int(limit.usedPercent))")
+                Text("\(Int(percent))")
                     .font(.system(size: 8, weight: .bold).monospacedDigit())
                     .foregroundStyle(.white.opacity(0.9))
             }
             .frame(width: 26, height: 26)
-            Text(limit.label == "Weekly" ? "wk" : "5h")
+            Text(caption)
                 .font(.system(size: 7, weight: .semibold))
                 .foregroundStyle(.white.opacity(0.4))
         }
-        .help(resetHint)
-        .accessibilityLabel("\(limit.label) usage \(Int(limit.usedPercent)) percent")
-    }
-
-    private var resetHint: String {
-        let prefix = stale ? "\(limit.label) (last session)" : limit.label
-        guard let resets = limit.resetsAt else { return "\(prefix) window" }
-        let mins = Int(resets.timeIntervalSinceNow / 60)
-        if mins <= 0 { return "\(prefix) — window has reset" }
-        return mins < 60 ? "\(prefix) — resets in \(mins)m"
-                         : "\(prefix) — resets in \(mins / 60)h"
+        .help(hint)
+        .accessibilityLabel("\(caption) usage \(Int(percent)) percent")
     }
 }
