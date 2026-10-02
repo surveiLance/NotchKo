@@ -12,4 +12,5 @@ final class Services {
     let camera = CameraController()
     let tabs = TabSettings()
     let motion = MotionSettings()
+    let appearance = AppearanceSettings()
 }

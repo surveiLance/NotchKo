@@ -9,13 +9,21 @@ struct OverviewView: View {
     @ObservedObject var shelf: ShelfStore
     @ObservedObject var clock: ClockStore
     @ObservedObject var devices: DevicesStore
+    @ObservedObject var appearance: AppearanceSettings
 
     init(state: NotchState) {
         self.state = state
-        spotify = state.spotify; shelf = state.shelf; clock = state.clock; devices = state.devices
+        spotify = state.spotify; shelf = state.shelf; clock = state.clock
+        devices = state.devices; appearance = state.appearance
     }
 
-    private var accent: Color { Color(nsColor: spotify.accent) }
+    /// Artwork colour, or plain white when the user has colour switched off.
+    private var accent: Color {
+        appearance.artworkColour ? Color(nsColor: spotify.accent) : .white.opacity(0.9)
+    }
+    private var wash: Color? {
+        appearance.artworkColour && spotify.track != nil ? Color(nsColor: spotify.accent) : nil
+    }
 
     var body: some View {
         HStack(spacing: 8) {
@@ -32,7 +40,7 @@ struct OverviewView: View {
     // MARK: Music
 
     private var musicCard: some View {
-        Card(tint: spotify.track != nil ? accent : nil, action: { state.tab = .music }) {
+        Card(tint: wash, action: { state.tab = .music }) {
             // One block — artwork beside the text and controls, progress just
             // under it — centred in the card so there's no stranded gap.
             VStack(alignment: .leading, spacing: 9) {
@@ -89,7 +97,7 @@ struct OverviewView: View {
         if spotify.track != nil {
             HStack(spacing: 8) {
                 RoundIcon(symbol: spotify.isPlaying ? "pause.fill" : "play.fill",
-                          filled: true, tint: accent,
+                          filled: appearance.artworkColour, tint: accent,
                           label: spotify.isPlaying ? "Pause" : "Play") { spotify.playPause() }
                 RoundIcon(symbol: "forward.fill", filled: false, tint: accent, label: "Next track") { spotify.next() }
                 if spotify.isPlaying {

@@ -30,6 +30,7 @@ final class NotchState: ObservableObject {
     let camera: CameraController
     let tabs: TabSettings
     let motion: MotionSettings
+    let appearance: AppearanceSettings
 
     /// Order here is the order they appear in the strip.
     enum Tab: String, CaseIterable, Identifiable {
@@ -92,6 +93,7 @@ final class NotchState: ObservableObject {
         camera = services.camera
         tabs = services.tabs
         motion = services.motion
+        appearance = services.appearance
 
         // Wings: *playing* music gets a narrow wing for artwork/equaliser (a
         // paused track hides, you don't need to see it); a running timer or
@@ -392,7 +394,7 @@ enum Motion {
     /// Scan: wide and tall enough to pick a region out of a screenshot.
     static let scanSize = CGSize(width: 700, height: 330)
     /// Tab picker: two columns of choices.
-    static let setupSize = CGSize(width: 620, height: 340)
+    static let setupSize = CGSize(width: 620, height: 376)
 }
 
 /// What the collapsed pill can temporarily turn into.

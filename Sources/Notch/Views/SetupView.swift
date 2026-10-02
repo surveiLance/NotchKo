@@ -6,6 +6,7 @@ struct SetupView: View {
     @ObservedObject var state: NotchState
     @ObservedObject var tabs: TabSettings
     @ObservedObject var motion: MotionSettings
+    @ObservedObject var appearance: AppearanceSettings
     /// First run gets a line of explanation; later visits don't need it.
     let firstRun: Bool
 
@@ -68,6 +69,21 @@ struct SetupView: View {
                 }
                 .padding(2)
                 .background(Capsule().fill(.white.opacity(0.07)))
+            }
+
+            HStack(spacing: 8) {
+                VStack(alignment: .leading, spacing: 0) {
+                    Text("Album colour")
+                        .font(.system(size: 11, weight: .semibold)).foregroundStyle(.white.opacity(0.85))
+                    Text("Tint the music card and tab with the artwork's colour")
+                        .font(.system(size: 9)).foregroundStyle(.white.opacity(0.45)).lineLimit(1)
+                }
+                Spacer(minLength: 0)
+                Toggle("", isOn: $appearance.artworkColour)
+                    .toggleStyle(.switch)
+                    .controlSize(.small)
+                    .labelsHidden()
+                    .accessibilityLabel("Tint with album colour")
             }
         }
     }

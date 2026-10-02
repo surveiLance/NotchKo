@@ -2,6 +2,7 @@ import SwiftUI
 
 struct NowPlayingView: View {
     @ObservedObject var spotify: SpotifyClient
+    @ObservedObject var appearance: AppearanceSettings
     var onOpenApp: () -> Void = {}
     @State private var artHover = false
 
@@ -55,10 +56,31 @@ struct NowPlayingView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        // The whole tab takes a wash of the artwork's colour, like the card on
+        // the overview does. Drawn behind without insetting the content, which
+        // is already sized to the panel's clipped area.
+        .background {
+            if let wash {
+                RoundedRectangle(cornerRadius: 13, style: .continuous)
+                    .fill(LinearGradient(colors: [wash.opacity(0.30), wash.opacity(0.04)],
+                                         startPoint: .topLeading, endPoint: .bottomTrailing))
+                    .overlay(RoundedRectangle(cornerRadius: 13, style: .continuous)
+                        .strokeBorder(wash.opacity(0.22), lineWidth: 1))
+                    .padding(.horizontal, -6)
+                    .padding(.vertical, -2)
+            }
+        }
+        .animation(.easeOut(duration: 0.35), value: spotify.accent)
         .onAppear { spotify.refreshModes() }
     }
 
-    private var accent: Color { Color(nsColor: spotify.accent) }
+    /// Artwork colour, or plain white when the user has colour switched off.
+    private var accent: Color {
+        appearance.artworkColour ? Color(nsColor: spotify.accent) : .white.opacity(0.85)
+    }
+    private var wash: Color? {
+        appearance.artworkColour && spotify.track != nil ? Color(nsColor: spotify.accent) : nil
+    }
 
     @ViewBuilder
     private var artwork: some View {

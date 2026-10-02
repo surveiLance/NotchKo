@@ -66,7 +66,9 @@ Devices, Teleprompter, Image tools, Mirror. Only the ones you switch on appear,
 so the notch stays as small as you need. Change your mind any time: the **sliders button** at the
 right of the tab strip, or the menu bar icon → **Choose Tabs…**
 
-The same panel has an **animation speed** control — Fast, Normal or Relaxed —
+The same panel also has an **Album colour** switch — the music card and tab
+take a wash of the current artwork's dominant colour; turn it off for plain
+dark surfaces. And an **animation speed** control — Fast, Normal or Relaxed —
 if the notch feels too eager or too sluggish. It also follows macOS
 **Accessibility → Display → Reduce Motion**, fading instead of springing when
 that's on.

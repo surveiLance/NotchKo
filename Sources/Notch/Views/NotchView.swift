@@ -53,7 +53,8 @@ struct NotchView: View {
             if isOpen, state.isChoosingTabs {
                 VStack(spacing: 0) {
                     Spacer().frame(height: notchSize.height)
-                    SetupView(state: state, tabs: tabs, motion: state.motion, firstRun: !tabs.hasChosen)
+                    SetupView(state: state, tabs: tabs, motion: state.motion,
+                                  appearance: state.appearance, firstRun: !tabs.hasChosen)
                         .padding(.horizontal, 14)
                         .padding(.top, 6)
                         .padding(.bottom, 14)
@@ -182,7 +183,7 @@ struct NotchView: View {
             MirrorView(camera: state.camera)
         case .music:
             if spotify.track != nil {
-                NowPlayingView(spotify: spotify) { state.collapseNow() }
+                NowPlayingView(spotify: spotify, appearance: state.appearance) { state.collapseNow() }
             } else {
                 VStack(spacing: 8) {
                     Spacer(minLength: 0)
