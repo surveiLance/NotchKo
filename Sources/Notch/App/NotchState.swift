@@ -31,10 +31,11 @@ final class NotchState: ObservableObject {
     let tabs: TabSettings
     let motion: MotionSettings
     let appearance: AppearanceSettings
+    let agents: AgentsStore
 
     /// Order here is the order they appear in the strip.
     enum Tab: String, CaseIterable, Identifiable {
-        case home, music, shelf, mirror, clock, devices, prompter, tools
+        case home, music, shelf, mirror, clock, devices, agents, prompter, tools
         var id: String { rawValue }
 
         enum Side { case left, right }
@@ -49,6 +50,7 @@ final class NotchState: ObservableObject {
             case .devices: return "Devices"
             case .prompter: return "Teleprompter"
             case .tools: return "Image tools"
+            case .agents: return "AI agents"
             }
         }
 
@@ -62,6 +64,7 @@ final class NotchState: ObservableObject {
             case .devices: return "cable.connector.horizontal"
             case .prompter: return "text.alignleft"
             case .tools: return "wand.and.stars"
+            case .agents: return "cpu"
             }
         }
 
@@ -75,6 +78,7 @@ final class NotchState: ObservableObject {
             case .devices: return "AirPods and battery levels"
             case .prompter: return "Read a script under the camera"
             case .tools: return "Convert, compress, cut out"
+            case .agents: return "Claude Code and Codex usage"
             }
         }
 
@@ -94,6 +98,7 @@ final class NotchState: ObservableObject {
         tabs = services.tabs
         motion = services.motion
         appearance = services.appearance
+        agents = services.agents
 
         // Wings: *playing* music gets a narrow wing for artwork/equaliser (a
         // paused track hides, you don't need to see it); a running timer or

@@ -13,4 +13,5 @@ final class Services {
     let tabs = TabSettings()
     let motion = MotionSettings()
     let appearance = AppearanceSettings()
+    let agents = AgentsStore()
 }

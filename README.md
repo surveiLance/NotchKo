@@ -178,6 +178,22 @@ Select an image on the Shelf and press the **⌶ scan** button. Then:
 
 All offline, using Apple's Vision framework. Works on PDFs too.
 
+### 🤖 AI agents
+
+<p align="center"><img src="docs/portfolio/13-agents.png" width="700" alt="Agents tab: Claude Code and Codex token use, plan windows, and live sessions"></p>
+
+Follow Claude Code and Codex from the notch. Both CLIs already write their
+transcripts to disk — `~/.claude/projects` and `~/.codex/sessions` — so this
+just reads them:
+
+- Tokens used today and how many sessions, per agent
+- **Plan windows** for Codex (5-hourly and weekly) as dials, with how long
+  until they reset
+- A list of today's sessions: project, model, tokens and when they last moved,
+  with a green dot on anything still working
+
+Nothing leaves your Mac, and the scan only runs while the tab is open.
+
 ### 📜 Teleprompter
 
 <p align="center"><img src="docs/portfolio/08-teleprompter.png" width="820" alt="Teleprompter reading strip under the camera"></p>

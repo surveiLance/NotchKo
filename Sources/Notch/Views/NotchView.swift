@@ -198,6 +198,8 @@ struct NotchView: View {
             ToolsView(shelf: shelf, state: state)
         case .mirror:
             MirrorView(camera: state.camera)
+        case .agents:
+            AgentsView(agents: state.agents)
         case .music:
             if spotify.track != nil {
                 NowPlayingView(spotify: spotify, appearance: state.appearance) { state.collapseNow() }
