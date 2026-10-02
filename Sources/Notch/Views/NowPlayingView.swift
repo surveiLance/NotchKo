@@ -56,20 +56,6 @@ struct NowPlayingView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        // The whole tab takes a wash of the artwork's colour, like the card on
-        // the overview does. Drawn behind without insetting the content, which
-        // is already sized to the panel's clipped area.
-        .background {
-            if let wash {
-                RoundedRectangle(cornerRadius: 13, style: .continuous)
-                    .fill(LinearGradient(colors: [wash.opacity(0.30), wash.opacity(0.04)],
-                                         startPoint: .topLeading, endPoint: .bottomTrailing))
-                    .overlay(RoundedRectangle(cornerRadius: 13, style: .continuous)
-                        .strokeBorder(wash.opacity(0.22), lineWidth: 1))
-                    .padding(.horizontal, -6)
-                    .padding(.vertical, -2)
-            }
-        }
         .animation(.easeOut(duration: 0.35), value: spotify.accent)
         .onAppear { spotify.refreshModes() }
     }

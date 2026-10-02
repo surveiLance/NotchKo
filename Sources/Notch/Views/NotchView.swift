@@ -25,6 +25,12 @@ struct NotchView: View {
     private var hasNotice: Bool { notice != nil }
     private var hasWings: Bool { !isOpen && !hasNotice && state.wingWidth > 0 }
 
+    /// Nil when there's nothing playing or the user has colour switched off.
+    private var panelWash: Color? {
+        guard state.appearance.artworkColour, spotify.track != nil else { return nil }
+        return Color(nsColor: spotify.accent)
+    }
+
     private var tallNotice: Bool { (notice?.height ?? 0) > notchSize.height }
 
     /// Ears only appear when open or on a tall island; collapsed the shape hides under the real notch.
@@ -49,6 +55,17 @@ struct NotchView: View {
         ZStack(alignment: .top) {
             NotchShape(topRadius: topRadius, bottomRadius: bottomRadius)
                 .fill(.black)
+
+            // Whole-panel wash of the artwork's colour, so the tint carries
+            // across the tab strip and every tab rather than stopping at the
+            // edge of one card.
+            if isOpen, let wash = panelWash {
+                NotchShape(topRadius: topRadius, bottomRadius: bottomRadius)
+                    .fill(LinearGradient(colors: [wash.opacity(0.26), wash.opacity(0.03)],
+                                         startPoint: .topLeading, endPoint: .bottomTrailing))
+                    .animation(.easeOut(duration: 0.45), value: spotify.accent)
+                    .transition(.opacity)
+            }
 
             if isOpen, state.isChoosingTabs {
                 VStack(spacing: 0) {
