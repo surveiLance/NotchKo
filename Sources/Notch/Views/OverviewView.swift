@@ -34,9 +34,11 @@ struct OverviewView: View {
     private var musicCard: some View {
         Card(tint: spotify.track != nil ? accent : nil, action: { state.tab = .music }) {
             VStack(alignment: .leading, spacing: 0) {
+                // Text and controls form one block that sits level with the
+                // artwork, rather than the buttons sinking to the bottom.
                 HStack(spacing: 10) {
                     artwork
-                    VStack(alignment: .leading, spacing: 2) {
+                    VStack(alignment: .leading, spacing: 0) {
                         if let track = spotify.track {
                             Text(track.name)
                                 .font(.system(size: 13, weight: .semibold))
@@ -44,6 +46,7 @@ struct OverviewView: View {
                             Text(track.artist)
                                 .font(.system(size: 10.5))
                                 .foregroundStyle(.white.opacity(0.55)).lineLimit(1)
+                                .padding(.top, 1)
                         } else {
                             Text("Nothing playing")
                                 .font(.system(size: 13, weight: .semibold))
@@ -51,9 +54,9 @@ struct OverviewView: View {
                             Text("Spotify")
                                 .font(.system(size: 10.5))
                                 .foregroundStyle(.white.opacity(0.4))
+                                .padding(.top, 1)
                         }
-                        Spacer(minLength: 0)
-                        controls
+                        controls.padding(.top, 7)
                     }
                     Spacer(minLength: 0)
                 }
