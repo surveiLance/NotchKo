@@ -66,9 +66,10 @@ Devices, Teleprompter, Image tools, Mirror. Only the ones you switch on appear,
 so the notch stays as small as you need. Change your mind any time: the **sliders button** at the
 right of the tab strip, or the menu bar icon → **Choose Tabs…**
 
-The same panel also has an **Album colour** switch — the music card and tab
-take a wash of the current artwork's dominant colour; turn it off for plain
-dark surfaces. And an **animation speed** control — Fast, Normal or Relaxed —
+The same panel also has an **Album colour** switch — the whole notch takes a
+wash of the current artwork's dominant colour, tabs and all, and the controls
+follow it; turn it off for plain dark surfaces. And an **animation speed**
+control — Fast, Normal or Relaxed —
 if the notch feels too eager or too sluggish. It also follows macOS
 **Accessibility → Display → Reduce Motion**, fading instead of springing when
 that's on.
@@ -111,8 +112,9 @@ macOS may ask once more to let Notch control Spotify after an update — click
 
 Shows whatever Spotify is playing. Click the bar to jump around in the song,
 shuffle / repeat, Spotify's own volume slider, click the album art to open
-Spotify. While closed, the pill
-shows the album art and an equalizer in the album's colour — hidden when paused.
+Spotify. The whole panel takes a wash of the artwork's dominant colour, which
+cross-fades as tracks change. While closed, the pill shows the album art and an
+equalizer in that colour — hidden when paused.
 
 ### 🗂 Shelf
 
