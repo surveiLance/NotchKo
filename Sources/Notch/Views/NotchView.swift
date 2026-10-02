@@ -78,7 +78,7 @@ struct NotchView: View {
                         .padding(.bottom, 14)
                 }
                 .padding(.horizontal, topRadius)
-                .frame(width: Motion.setupSize.width, height: Motion.setupSize.height, alignment: .top)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                 .transition(.opacity.animation(.easeOut(duration: 0.2).delay(0.08)))
             } else if isOpen, let scanURL = state.scanTarget {
                 VStack(spacing: 0) {
@@ -89,12 +89,12 @@ struct NotchView: View {
                         .padding(.bottom, 14)
                 }
                 .padding(.horizontal, topRadius)
-                .frame(width: Motion.scanSize.width, height: Motion.scanSize.height, alignment: .top)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                 .transition(.opacity.animation(.easeOut(duration: 0.2).delay(0.08)))
             } else if isOpen && state.isPrompting {
                 PrompterStripView(prompter: prompter, state: state, notchSize: notchSize)
                     .padding(.horizontal, topRadius)
-                    .frame(width: Motion.prompterSize.width, height: Motion.prompterSize.height, alignment: .top)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                     .transition(.opacity.animation(.easeOut(duration: 0.25).delay(0.1)))
             } else if isOpen {
                 VStack(spacing: 0) {
@@ -109,16 +109,14 @@ struct NotchView: View {
                             removal: .opacity
                         ))
                         .animation(Motion.tabSwitch, value: state.tab)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: max(40, state.expandedSize.height - notchSize.height - 6 - 14), alignment: .top)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                         .clipped()
                         .padding(.horizontal, 14)
                         .padding(.top, 6)
                         .padding(.bottom, 14)
                 }
                 .padding(.horizontal, topRadius)
-                .frame(width: state.expandedSize.width, height: state.expandedSize.height, alignment: .top)
-                .animation(Motion.tabSwitch, value: state.expandedSize)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                 .transition(.asymmetric(
                     insertion: .opacity.combined(with: .scale(scale: 0.96, anchor: .top))
                         .animation(.easeOut(duration: 0.22).delay(0.05)),
@@ -145,7 +143,11 @@ struct NotchView: View {
                     .opacity(hasWings ? 1 : 0)
             }
         }
-        .frame(width: size.width, height: size.height, alignment: .top)
+        // When open the panel fills the window, so the window's own resize
+        // animation is the only thing moving the layout — animating the same
+        // geometry here as well made the tab icons trail behind it.
+        .frame(width: isOpen ? nil : size.width, height: isOpen ? nil : size.height, alignment: .top)
+        .frame(maxWidth: isOpen ? .infinity : nil, maxHeight: isOpen ? .infinity : nil, alignment: .top)
         .clipShape(NotchShape(topRadius: topRadius, bottomRadius: bottomRadius))
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
@@ -157,13 +159,17 @@ struct NotchView: View {
 
             Spacer().frame(width: notchSize.width + 2 * Motion.tabNotchGap)
 
+            // Fixed spacing, and settings sits with the tabs rather than
+            // pinned to the outer edge — so nothing in the header shifts when
+            // the panel resizes between tabs.
             HStack(spacing: 2) {
                 strip(.right)
-                Spacer(minLength: 6)
                 TabButton(symbol: "slider.horizontal.3", active: false, label: "Choose tabs") {
                     state.startSetup()
                 }
                 .help("Choose which tabs appear in the notch")
+                .padding(.leading, 6)
+                Spacer(minLength: 0)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.trailing, 10)

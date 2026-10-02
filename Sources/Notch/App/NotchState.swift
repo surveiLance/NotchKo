@@ -413,7 +413,6 @@ enum Motion {
     static let tabNotchGap: CGFloat = 10
     /// One tab button plus its spacing, the settings button plus its gap, and
     /// the breathing room at the outer edge of each strip.
-    static let tabButtonWidth: CGFloat = 26
     static let tabSlot: CGFloat = 28
     static let settingsSlot: CGFloat = 36
     static let stripPadding: CGFloat = 12
