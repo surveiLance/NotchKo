@@ -66,6 +66,11 @@ Devices, Teleprompter, Image tools, Mirror. Only the ones you switch on appear,
 so the notch stays as small as you need. Change your mind any time: the **sliders button** at the
 right of the tab strip, or the menu bar icon → **Choose Tabs…**
 
+The same panel has an **animation speed** control — Fast, Normal or Relaxed —
+if the notch feels too eager or too sluggish. It also follows macOS
+**Accessibility → Display → Reduce Motion**, fading instead of springing when
+that's on.
+
 <p align="center"><img src="docs/portfolio/11-setup.png" width="700" alt="The tab picker, asking which features to show"></p>
 
 ### One permission

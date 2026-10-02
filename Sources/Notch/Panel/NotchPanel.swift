@@ -244,7 +244,7 @@ final class NotchPanel: NSPanel {
             // Wait for the collapse spring to settle before shrinking the window.
             let work = DispatchWorkItem(block: apply)
             shrinkWork = work
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5, execute: work)
+            DispatchQueue.main.asyncAfter(deadline: .now() + Motion.settle, execute: work)
         }
     }
 

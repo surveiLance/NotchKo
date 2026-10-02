@@ -5,6 +5,7 @@ import SwiftUI
 struct SetupView: View {
     @ObservedObject var state: NotchState
     @ObservedObject var tabs: TabSettings
+    @ObservedObject var motion: MotionSettings
     /// First run gets a line of explanation; later visits don't need it.
     let firstRun: Bool
 
@@ -47,7 +48,49 @@ struct SetupView: View {
                     }
                 }
             }
+
+            Divider().overlay(.white.opacity(0.1))
+
+            HStack(spacing: 8) {
+                VStack(alignment: .leading, spacing: 0) {
+                    Text("Animation speed")
+                        .font(.system(size: 11, weight: .semibold)).foregroundStyle(.white.opacity(0.85))
+                    Text(motion.systemReducesMotion
+                         ? "Reduce Motion is on in macOS — the notch fades instead"
+                         : "How quickly the notch opens and closes")
+                        .font(.system(size: 9)).foregroundStyle(.white.opacity(0.45)).lineLimit(1)
+                }
+                Spacer(minLength: 0)
+                HStack(spacing: 2) {
+                    ForEach(Motion.Speed.allCases) { s in
+                        SpeedOption(title: s.title, on: motion.speed == s) { motion.speed = s }
+                    }
+                }
+                .padding(2)
+                .background(Capsule().fill(.white.opacity(0.07)))
+            }
         }
+    }
+}
+
+private struct SpeedOption: View {
+    let title: String
+    let on: Bool
+    let action: () -> Void
+    @State private var hovering = false
+
+    var body: some View {
+        Button(action: action) {
+            Text(title)
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundStyle(on ? .white : .white.opacity(hovering ? 0.8 : 0.55))
+                .padding(.horizontal, 11).frame(height: 22)
+                .background(Capsule().fill(on ? Color.accentColor.opacity(0.8) : .clear))
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering = $0 }
+        .accessibilityLabel("\(title) animation speed")
+        .accessibilityAddTraits(on ? [.isSelected] : [])
     }
 }
 

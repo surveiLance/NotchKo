@@ -11,4 +11,5 @@ final class Services {
     let prompter = TeleprompterStore()
     let camera = CameraController()
     let tabs = TabSettings()
+    let motion = MotionSettings()
 }

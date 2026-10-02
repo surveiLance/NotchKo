@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 import Combine
 
@@ -28,6 +29,7 @@ final class NotchState: ObservableObject {
     let prompter: TeleprompterStore
     let camera: CameraController
     let tabs: TabSettings
+    let motion: MotionSettings
 
     /// Order here is the order they appear in the strip.
     enum Tab: String, CaseIterable, Identifiable {
@@ -89,6 +91,7 @@ final class NotchState: ObservableObject {
         prompter = services.prompter
         camera = services.camera
         tabs = services.tabs
+        motion = services.motion
 
         // Wings: *playing* music gets a narrow wing for artwork/equaliser (a
         // paused track hides, you don't need to see it); a running timer or
@@ -304,16 +307,78 @@ final class NotchState: ObservableObject {
     func preview(_ urls: [URL]) { previewHandler?(urls) }
 }
 
-/// Tunables for feel. Adjust these and rebuild; nothing else needs to change.
+/// Tunables for feel. The springs scale with the user's chosen speed, and
+/// collapse to short fades when macOS "Reduce motion" is on.
 enum Motion {
-    // "Snappy with a hint of life" opening, "rigid" close — see spring guide.
-    static let expand   = Animation.spring(response: 0.38, dampingFraction: 0.74)
-    static let collapse = Animation.spring(response: 0.30, dampingFraction: 0.92)
-    static let openDelay: TimeInterval  = 0.3    // pointer must linger this long to open
-    static let closeDelay: TimeInterval = 0.18
-    static let reopenCooldown: TimeInterval = 0.9 // after closing, re-entering waits this long
+    enum Speed: String, CaseIterable, Identifiable {
+        case fast, normal, relaxed
+        var id: String { rawValue }
+        var title: String {
+            switch self {
+            case .fast: return "Fast"
+            case .normal: return "Normal"
+            case .relaxed: return "Relaxed"
+            }
+        }
+        /// Multiplies every duration and delay.
+        var scale: Double {
+            switch self {
+            case .fast: return 0.6
+            case .normal: return 1
+            case .relaxed: return 1.5
+            }
+        }
+    }
+
+    /// Only ever written from the main actor (the settings store).
+    nonisolated(unsafe) static var speed: Speed = .normal
+
+    /// macOS Accessibility → Display → Reduce motion.
+    static var reduceMotion: Bool {
+        NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+    }
+
+    private static var k: Double { speed.scale }
+
+    private static func spring(_ response: Double, _ damping: Double) -> Animation {
+        reduceMotion
+            ? .easeOut(duration: 0.12 * k)
+            : .spring(response: response * k, dampingFraction: damping)
+    }
+
+    // Opening is "snappy with a hint of life", closing near-rigid.
+    static var expand: Animation   { spring(0.38, 0.74) }
+    static var collapse: Animation { spring(0.30, 0.92) }
+    static var wings: Animation    { spring(0.40, 0.75) }
+    static var wingsOut: Animation { spring(0.36, 0.95) }
+    // Login greeting: bouncy out, smooth glide back.
+    static var greetIn: Animation  { spring(0.55, 0.58) }
+    static var greetOut: Animation { spring(0.60, 0.85) }
+    // Charger / bluetooth pops: quick and crisp.
+    static var noticeIn: Animation  { spring(0.32, 0.72) }
+    static var noticeOut: Animation { spring(0.35, 0.90) }
+
+    static var openDelay: TimeInterval  { 0.3 * k }   // linger before opening
+    static var closeDelay: TimeInterval { 0.18 * k }
+    static var reopenCooldown: TimeInterval { 0.9 * k }
+    static var greetHold: TimeInterval { 3.6 }
+    /// How long to wait for a collapse to settle before shrinking the window.
+    static var settle: TimeInterval { reduceMotion ? 0.14 * k : 0.5 * k }
 
     static let expandedSize = CGSize(width: 500, height: 160)
+    static let wingWidth: CGFloat = 36
+    static let wingWidthClock: CGFloat = 60
+    /// Transparent slack either side of the collapsed pill that still catches drags/hover.
+    static let catchMargin: CGFloat = 8
+    /// Space between the notch and the nearest tab on each side.
+    static let tabNotchGap: CGFloat = 10
+    /// One tab button plus its spacing, the settings button plus its gap, and
+    /// the breathing room at the outer edge of each strip.
+    static let tabSlot: CGFloat = 28
+    static let settingsSlot: CGFloat = 36
+    static let stripPadding: CGFloat = 12
+    static let greetWing: CGFloat = 176
+    static let greetHeight: CGFloat = 64
     /// Teleprompter strip: wide and a touch taller so 3–4 lines sit under the camera.
     static let prompterSize = CGSize(width: 660, height: 176)
     /// Mirror: same width as every other tab so the tab strips never reflow,
@@ -322,32 +387,8 @@ enum Motion {
     /// Scan: wide and tall enough to pick a region out of a screenshot.
     static let scanSize = CGSize(width: 700, height: 330)
     /// Tab picker: two columns of choices.
-    static let setupSize = CGSize(width: 620, height: 300)
-    /// Space between the notch and the nearest tab on each side.
-    static let tabNotchGap: CGFloat = 10
-    /// One tab button plus its spacing, the settings button plus its gap, and
-    /// the breathing room at the outer edge of each strip.
-    static let tabSlot: CGFloat = 28
-    static let settingsSlot: CGFloat = 36
-    static let stripPadding: CGFloat = 12
-    static let wingWidth: CGFloat = 36
-    static let wingWidthClock: CGFloat = 60
-    /// Transparent slack either side of the collapsed pill that still catches drags/hover.
-    static let catchMargin: CGFloat = 8
-
-    // Login greeting: "noticeable bounce, fun" out, "smooth glide" back.
-    static let greetIn  = Animation.spring(response: 0.55, dampingFraction: 0.58)
-    static let greetOut = Animation.spring(response: 0.6, dampingFraction: 0.85)
-    static let greetHold: TimeInterval = 3.6
-    static let greetWing: CGFloat = 176
-    static let greetHeight: CGFloat = 64
-    // Charger / bluetooth pops: quick and crisp.
-    static let noticeIn  = Animation.spring(response: 0.32, dampingFraction: 0.72)
-    static let noticeOut = Animation.spring(response: 0.35, dampingFraction: 0.9)
-    static let wings    = Animation.spring(response: 0.4, dampingFraction: 0.75)   // appearing
-    static let wingsOut = Animation.spring(response: 0.36, dampingFraction: 0.95)  // gliding back in
+    static let setupSize = CGSize(width: 620, height: 340)
 }
-
 
 /// What the collapsed pill can temporarily turn into.
 enum Notice: Equatable {

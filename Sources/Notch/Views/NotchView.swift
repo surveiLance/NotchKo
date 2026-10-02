@@ -53,7 +53,7 @@ struct NotchView: View {
             if isOpen, state.isChoosingTabs {
                 VStack(spacing: 0) {
                     Spacer().frame(height: notchSize.height)
-                    SetupView(state: state, tabs: tabs, firstRun: !tabs.hasChosen)
+                    SetupView(state: state, tabs: tabs, motion: state.motion, firstRun: !tabs.hasChosen)
                         .padding(.horizontal, 14)
                         .padding(.top, 6)
                         .padding(.bottom, 14)
