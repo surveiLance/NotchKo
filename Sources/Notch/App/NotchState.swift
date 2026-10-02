@@ -188,12 +188,25 @@ final class NotchState: ObservableObject {
     @Published private(set) var scanTarget: URL?
     /// Tab picker is showing.
     @Published private(set) var isChoosingTabs = false
+    /// Width of this display's notch, set by the panel — the tab strips have
+    /// to fit either side of it.
+    @Published var notchWidth: CGFloat = 179
 
     var expandedSize: CGSize {
         if isPrompting { return Motion.prompterSize }
         if scanTarget != nil { return Motion.scanSize }
         if isChoosingTabs { return Motion.setupSize }
-        return tab == .mirror ? Motion.mirrorSize : Motion.expandedSize
+        let height = tab == .mirror ? Motion.mirrorSize.height : Motion.expandedSize.height
+        return CGSize(width: max(Motion.expandedSize.width, widthForTabs), height: height)
+    }
+
+    /// Enough width that both strips fit beside the notch without crowding.
+    private var widthForTabs: CGFloat {
+        let left = CGFloat(tabs.ordered(on: .left).count) * Motion.tabSlot
+        // The right strip also carries the settings button.
+        let right = CGFloat(tabs.ordered(on: .right).count) * Motion.tabSlot + Motion.settingsSlot
+        let side = max(left, right) + Motion.stripPadding
+        return notchWidth + 2 * Motion.tabNotchGap + 2 * side
     }
 
     /// Open an image in the scan view (crop a region, read the text).
@@ -312,6 +325,11 @@ enum Motion {
     static let setupSize = CGSize(width: 620, height: 300)
     /// Space between the notch and the nearest tab on each side.
     static let tabNotchGap: CGFloat = 10
+    /// One tab button plus its spacing, the settings button plus its gap, and
+    /// the breathing room at the outer edge of each strip.
+    static let tabSlot: CGFloat = 28
+    static let settingsSlot: CGFloat = 36
+    static let stripPadding: CGFloat = 12
     static let wingWidth: CGFloat = 36
     static let wingWidthClock: CGFloat = 60
     /// Transparent slack either side of the collapsed pill that still catches drags/hover.

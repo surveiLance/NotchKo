@@ -130,7 +130,7 @@ struct NotchView: View {
 
             HStack(spacing: 2) {
                 strip(.right)
-                Spacer(minLength: 8)
+                Spacer(minLength: 6)
                 TabButton(symbol: "slider.horizontal.3", active: false, label: "Choose tabs") {
                     state.startSetup()
                 }

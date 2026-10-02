@@ -167,6 +167,19 @@ final class NotchPanel: NSPanel {
             }
             .store(in: &cancellables)
 
+        // Turning tabs on or off changes how wide the strips need to be.
+        state.tabs.$enabled
+            .removeDuplicates()
+            .dropFirst()
+            .sink { [weak self] _ in
+                guard let self else { return }
+                DispatchQueue.main.async {
+                    guard self.state.isExpanded else { return }
+                    self.setFrame(self.geometry.frame(for: self.state.expandedSize), display: true)
+                }
+            }
+            .store(in: &cancellables)
+
         state.$isChoosingTabs
             .removeDuplicates()
             .sink { [weak self] choosing in
@@ -206,6 +219,7 @@ final class NotchPanel: NSPanel {
 
     func relayout() {
         geometry = NotchGeometry.detect(for: currentScreen)
+        state.notchWidth = geometry.notchSize.width
         resize(expanded: state.isExpanded, animatedDelay: false)
         if let host = contentView as? HoverHostingView<NotchView> {
             host.rootView = NotchView(state: state, notchSize: geometry.notchSize)
