@@ -151,7 +151,7 @@ final class NotchPanel: NSPanel {
             .sink { [weak self] _ in self?.resyncExpandedFrame(animated: true) }
             .store(in: &cancellables)
 
-        state.tabSizes.$sizes
+        state.tabSizes.$mode
             .removeDuplicates()
             .dropFirst()
             .sink { [weak self] _ in self?.resyncExpandedFrame(animated: true) }
@@ -236,6 +236,7 @@ final class NotchPanel: NSPanel {
     func relayout() {
         geometry = NotchGeometry.detect(for: currentScreen)
         state.notchWidth = geometry.notchSize.width
+        state.screenWidth = geometry.screen.frame.width
         resize(expanded: state.isExpanded, animatedDelay: false)
         if let host = contentView as? HoverHostingView<NotchView> {
             host.rootView = NotchView(state: state, notchSize: geometry.notchSize)

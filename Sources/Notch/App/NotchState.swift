@@ -208,7 +208,16 @@ final class NotchState: ObservableObject {
         if isPrompting { return Motion.prompterSize }
         if scanTarget != nil { return Motion.scanSize }
         if isChoosingTabs { return Motion.setupSize }
-        return scaled(baseSize(for: tab), by: tabSizes.size(for: tab).scale)
+        switch tabSizes.mode {
+        case .auto:
+            return fit(baseSize(for: tab))
+        case .uniform:
+            // The largest any enabled tab needs, so switching never resizes.
+            let largest = tabs.ordered.map(baseSize(for:)).reduce(Motion.expandedSize) {
+                CGSize(width: max($0.width, $1.width), height: max($0.height, $1.height))
+            }
+            return fit(largest)
+        }
     }
 
     /// What a tab opens at before the user's size preference is applied.
@@ -220,14 +229,14 @@ final class NotchState: ObservableObject {
         }
     }
 
-    /// Never narrower than the tab strips need, nor wider than the screen.
-    private func scaled(_ size: CGSize, by scale: CGFloat) -> CGSize {
-        let maxWidth = max(widthForTabs, notchWidth + 80)
-        return CGSize(
-            width: min(max(size.width * scale, widthForTabs), max(maxWidth, size.width * scale)),
-            height: max(size.height * scale, notchWidth > 0 ? 80 : size.height)
-        )
+    /// Never narrower than the tab strips need, and never wider than the screen.
+    private func fit(_ size: CGSize) -> CGSize {
+        CGSize(width: min(max(size.width, widthForTabs), screenWidth - 40),
+               height: size.height)
     }
+
+    /// Set by the panel alongside the notch width.
+    @Published var screenWidth: CGFloat = 1470
 
     /// Enough width that both strips fit beside the notch without crowding.
     private var widthForTabs: CGFloat {
@@ -404,6 +413,7 @@ enum Motion {
     static let tabNotchGap: CGFloat = 10
     /// One tab button plus its spacing, the settings button plus its gap, and
     /// the breathing room at the outer edge of each strip.
+    static let tabButtonWidth: CGFloat = 26
     static let tabSlot: CGFloat = 28
     static let settingsSlot: CGFloat = 36
     static let stripPadding: CGFloat = 12

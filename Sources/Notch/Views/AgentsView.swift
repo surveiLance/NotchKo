@@ -40,9 +40,6 @@ struct AgentsView: View {
             Spacer(minLength: 0)
 
             HStack(spacing: 7) {
-                // Only Codex records plan windows locally; Claude Code does
-                // not, so its card shows usage without a dial rather than a
-                // number that would be made up.
                 ForEach(s.limits, id: \.label) { limit in
                     Dial(percent: limit.usedPercent,
                          caption: limit.label == "Weekly" ? "wk" : "5h",
@@ -130,10 +127,14 @@ private struct SessionRow: View {
         Button(action: action) { row }
             .buttonStyle(.plain)
             .onHover { hovering = $0 }
-            .help("Open in \(session.agent.appName)")
+            .help(session.deepLink != nil
+                  ? "Open this session in \(session.agent.appName)"
+                  : "Open \(session.agent.appName)")
             .accessibilityElement(children: .ignore)
             .accessibilityLabel("\(session.project), \(short(session.model)), \(session.activity ?? "no recent prompt"), \(AgentsStore.format(session.tokens)) tokens, \(ago(session.lastActivity))\(session.isLive ? ", working" : "")")
-            .accessibilityHint("Opens \(session.agent.appName)")
+            .accessibilityHint(session.deepLink != nil
+                               ? "Opens this session in \(session.agent.appName)"
+                               : "Opens \(session.agent.appName)")
     }
 
     private var row: some View {

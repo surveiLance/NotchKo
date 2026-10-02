@@ -17,11 +17,16 @@ final class AgentsStore: ObservableObject {
         var appName: String { self == .claude ? "Claude" : "ChatGPT" }
     }
 
-    /// Bring the agent's app to the front. Deep-linking to the exact session
-    /// isn't done: both apps register a URL scheme, but neither documents the
-    /// path for a session, and a wrong URL would open the wrong thing.
+    /// Jump to the session itself where the app supports it, otherwise just
+    /// bring the app forward. Claude's desktop app takes
+    /// `claude://code/continue?session=local_<id>`; Codex has no documented
+    /// per-session route, so it gets the plain app.
     static func open(_ session: Session) {
         let workspace = NSWorkspace.shared
+        if session.agent == .claude, let deepLink = session.deepLink {
+            workspace.open(deepLink)
+            return
+        }
         guard let url = workspace.urlForApplication(withBundleIdentifier: session.agent.bundleID) else { return }
         workspace.openApplication(at: url, configuration: NSWorkspace.OpenConfiguration())
     }
@@ -37,6 +42,14 @@ final class AgentsStore: ObservableObject {
         let lastActivity: Date
         /// Touched in the last couple of minutes — i.e. probably still working.
         var isLive: Bool { Date().timeIntervalSince(lastActivity) < 120 }
+
+        /// The transcript's filename is the session id.
+        var deepLink: URL? {
+            guard agent == .claude else { return nil }
+            let uuid = (id as NSString).lastPathComponent.replacingOccurrences(of: ".jsonl", with: "")
+            guard !uuid.isEmpty else { return nil }
+            return URL(string: "claude://code/continue?session=local_\(uuid)&source=notchko")
+        }
     }
 
     /// A usage window Codex reports (5-hourly and weekly).
@@ -157,6 +170,7 @@ final class AgentsStore: ObservableObject {
                         lastActivity: modified))
                 }
                 summary.models = models.sorted()
+                if agent == .claude { summary.limits = claudePlanUsage() }
                 // Plan windows are worth seeing even on a day you haven't run
                 // Codex, so fall back to the most recent session's figures.
                 if agent == .codex, summary.limits.isEmpty,
@@ -175,6 +189,24 @@ final class AgentsStore: ObservableObject {
     }
 
     /// Claude Code: one JSON object per line; assistant lines carry usage.
+    /// Claude's desktop app keeps a rolling record of plan utilisation in
+    /// Application Support — the five-hour and seven-day windows, as whole
+    /// percentages. The CLI's own transcripts don't carry this.
+    private nonisolated static func claudePlanUsage() -> [Limit] {
+        let url = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent("Library/Application Support/Claude/plan-usage-history.json")
+        guard let data = try? Data(contentsOf: url),
+              let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let samples = root["samples"] as? [[String: Any]],
+              let latest = samples.last,
+              let used = latest["u"] as? [String: Any] else { return [] }
+        // Keys are abbreviations: fh = five hour, sd = seven day.
+        return [("fh", "5-hourly"), ("sd", "Weekly")].compactMap { key, label in
+            guard let percent = (used[key] as? NSNumber)?.doubleValue else { return nil }
+            return Limit(label: label, usedPercent: percent, resetsAt: nil)
+        }
+    }
+
     /// Splits a memory-mapped file into lines without building Swift Strings
     /// for all of it — transcripts run to tens of MB and String's Unicode
     /// handling makes that take seconds.

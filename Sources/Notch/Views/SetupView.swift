@@ -22,7 +22,7 @@ struct SetupView: View {
                         .foregroundStyle(.white)
                     Text(firstRun
                          ? "Pick a few to start — you can change these any time from the menu bar."
-                         : "Switch off what you don't use. S · M · L sets how big each tab opens.")
+                         : "Switch off what you don't use; the notch only shows what's on.")
                         .font(.system(size: 10))
                         .foregroundStyle(.white.opacity(0.55))
                 }
@@ -44,9 +44,7 @@ struct SetupView: View {
             ScrollView(.vertical, showsIndicators: false) {
                 LazyVGrid(columns: columns, spacing: 8) {
                     ForEach(NotchState.Tab.allCases) { tab in
-                        TabChoice(tab: tab, on: tabs.isOn(tab), locked: tab.isRequired,
-                                  size: tabSizes.size(for: tab),
-                                  onSize: { tabSizes.set(tab, $0) }) {
+                        TabChoice(tab: tab, on: tabs.isOn(tab), locked: tab.isRequired) {
                             tabs.toggle(tab)
                         }
                     }
@@ -76,6 +74,23 @@ struct SetupView: View {
 
             HStack(spacing: 8) {
                 VStack(alignment: .leading, spacing: 0) {
+                    Text("Panel size")
+                        .font(.system(size: 11, weight: .semibold)).foregroundStyle(.white.opacity(0.85))
+                    Text(tabSizes.mode.blurb)
+                        .font(.system(size: 9)).foregroundStyle(.white.opacity(0.45)).lineLimit(1)
+                }
+                Spacer(minLength: 0)
+                HStack(spacing: 2) {
+                    ForEach(TabSizeSettings.Mode.allCases) { m in
+                        SpeedOption(title: m.title, on: tabSizes.mode == m) { tabSizes.mode = m }
+                    }
+                }
+                .padding(2)
+                .background(Capsule().fill(.white.opacity(0.07)))
+            }
+
+            HStack(spacing: 8) {
+                VStack(alignment: .leading, spacing: 0) {
                     Text("Album colour")
                         .font(.system(size: 11, weight: .semibold)).foregroundStyle(.white.opacity(0.85))
                     Text("Tint the music card and tab with the artwork's colour")
@@ -89,27 +104,6 @@ struct SetupView: View {
                     .accessibilityLabel("Tint with album colour")
             }
         }
-    }
-}
-
-private struct SizePip: View {
-    let title: String
-    let on: Bool
-    let action: () -> Void
-    @State private var hovering = false
-
-    var body: some View {
-        Button(action: action) {
-            Text(title)
-                .font(.system(size: 8.5, weight: .bold))
-                .foregroundStyle(on ? .white : .white.opacity(hovering ? 0.75 : 0.45))
-                .frame(width: 17, height: 16)
-                .background(Capsule().fill(on ? Color.accentColor.opacity(0.75) : .clear))
-        }
-        .buttonStyle(.plain)
-        .onHover { hovering = $0 }
-        .accessibilityLabel("\(title) size")
-        .accessibilityAddTraits(on ? [.isSelected] : [])
     }
 }
 
@@ -138,8 +132,6 @@ private struct TabChoice: View {
     let tab: NotchState.Tab
     let on: Bool
     let locked: Bool
-    let size: TabSizeSettings.Size
-    let onSize: (TabSizeSettings.Size) -> Void
     let action: () -> Void
     @State private var hovering = false
 
@@ -162,17 +154,6 @@ private struct TabChoice: View {
                         .lineLimit(1)
                 }
                 Spacer(minLength: 0)
-
-                // How big this tab opens — only meaningful once it's on.
-                if on {
-                    HStack(spacing: 1) {
-                        ForEach(TabSizeSettings.Size.allCases) { s in
-                            SizePip(title: s.title, on: size == s) { onSize(s) }
-                        }
-                    }
-                    .padding(1)
-                    .background(Capsule().fill(.white.opacity(0.07)))
-                }
 
                 Image(systemName: on ? "checkmark.circle.fill" : "circle")
                     .font(.system(size: 13))

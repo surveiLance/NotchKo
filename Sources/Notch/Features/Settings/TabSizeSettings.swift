@@ -2,46 +2,33 @@ import CoreGraphics
 import Combine
 import Foundation
 
-/// How large the panel opens for each tab. Some tabs want room (agents, the
-/// mirror), others are better small, so the choice is per tab.
+/// How the panel decides its size.
 @MainActor
 final class TabSizeSettings: ObservableObject {
-    typealias Tab = NotchState.Tab
+    enum Mode: String, CaseIterable, Identifiable {
+        /// Each tab opens at the size its own content needs.
+        case auto
+        /// Every tab opens at the size the largest enabled tab needs, so the
+        /// panel never changes size as you move between them.
+        case uniform
 
-    enum Size: String, CaseIterable, Identifiable {
-        case small, medium, large
         var id: String { rawValue }
-        var title: String {
-            switch self {
-            case .small: return "S"
-            case .medium: return "M"
-            case .large: return "L"
-            }
-        }
-        var scale: CGFloat {
-            switch self {
-            case .small: return 0.84
-            case .medium: return 1
-            case .large: return 1.3
-            }
+        var title: String { self == .auto ? "Fit content" : "Same size" }
+        var blurb: String {
+            self == .auto
+                ? "Each tab opens as big as it needs"
+                : "Every tab opens the same size — the notch never resizes"
         }
     }
 
-    @Published private(set) var sizes: [String: String] {
-        didSet { UserDefaults.standard.set(sizes, forKey: key) }
+    @Published var mode: Mode {
+        didSet { UserDefaults.standard.set(mode.rawValue, forKey: key) }
     }
 
-    private let key = "tabs.sizes"
+    private let key = "tabs.sizeMode"
 
     init() {
-        sizes = UserDefaults.standard.dictionary(forKey: key) as? [String: String] ?? [:]
-    }
-
-    func size(for tab: Tab) -> Size {
-        sizes[tab.rawValue].flatMap(Size.init(rawValue:)) ?? .medium
-    }
-
-    func set(_ tab: Tab, _ size: Size) {
-        sizes[tab.rawValue] = size.rawValue
+        let raw = UserDefaults.standard.string(forKey: key) ?? ""
+        mode = Mode(rawValue: raw) ?? .auto
     }
 }

@@ -182,11 +182,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// Lets a script drive the UI without a cursor — see scripts/debug.sh.
     /// Acts on every panel; "add"/"preview" go through the shared services.
     private func setupDebugHooks() {
+        // Selector-based so we can ask for .deliverImmediately. A background
+        // agent's distributed notifications are coalesced by default and stop
+        // arriving once the app has been activated.
         DistributedNotificationCenter.default().addObserver(
-            forName: Notification.Name("com.lance.notch.debug"), object: nil, queue: .main
-        ) { [weak self] note in
-            MainActor.assumeIsolated {
-                guard let self, let action = note.userInfo?["action"] as? String else { return }
+            self, selector: #selector(handleDebugNotification(_:)),
+            name: Notification.Name("com.lance.notch.debug"), object: nil,
+            suspensionBehavior: .deliverImmediately)
+    }
+
+    @objc private func handleDebugNotification(_ note: Notification) {
+        MainActor.assumeIsolated {
+            guard let action = note.userInfo?["action"] as? String else { return }
                 let path = note.userInfo?["path"] as? String
                 for state in self.states {
                     switch action {
@@ -236,8 +243,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                             NSLog("debug \(action): \(out?.path ?? "nil")")
                         }
                     }
-                default: break
-                }
+            default: break
             }
         }
     }
